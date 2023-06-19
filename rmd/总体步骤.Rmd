@@ -1,0 +1,27 @@
+---
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+1.  数据整理
+    1.  人口学信息整理，文件路径`info\information.xlsx`，
+        共36列包含分组信息，量表得分，眼动实验记录，其他人口学信息，共具体解释文档在sheet3。
+
+    2.  基线刺激材料和童年创伤刺激材料图片对应的维度信息整理。文件路径`info\picture.xlsx`，包含7列信息，trail（共71个，其中1-45为block1，91-116为block2）、基线材料列(baseline)、创伤材料列(target1、target2、target3、target4）、维度列（weidu
+        ）。
+
+    3.  用EDF
+        Converter软件将edf文件转ASC文件格式，文件路劲`Data\01`，共417个。
+
+    4.  批量提取ASC文件里raw sacc blinks fix info msg
+        文件，并按ASC文件里的文件名命名。文件路径`D:\Data\01`。脚本路径：`src\提取ASC文件.Rmd`。
+
+    5.  给刺激材料打位置坐标，文件路径`info\area1.xlsx`。文件包含6列信息，pic为导入的图片名；area为兴趣区名，包含四个区域，语段、题干、回答是、回答否；X1、X2为横纵坐标点；Y1、Y2为纵轴坐标点。
+
+    6.  对应原始的msg文件提取每个刺激物对应的时间戳信息，文件路径`info\message.xlsx`。文件包含4列信息，msg为刺激物的名称；block；Stime为开始时间；Etime为结束时间。
+
+        1.  检查刺激物是否唯一标识
+        2.  
+2.  数据清洗
+3.  初步分析

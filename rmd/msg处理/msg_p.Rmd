@@ -1,0 +1,23 @@
+---
+title: "msg文件处理"
+author: "yj"
+date: "2023-6-19"
+output: html_document
+---
+加载包
+```{r}
+library(tidyverse)
+library(readxl)
+```
+
+
+```{r}
+msg <- read_csv("/Users/placenameday/R study/yajuan_phd/data/processed/Orinig/msg/A003.asc.csv")
+msg_info1 <- read_excel("/Users/placenameday/R study/yajuan_phd/info/message1.xlsx")
+msg_info2 <- read_excel("/Users/placenameday/R study/yajuan_phd/info/message2.xlsx")
+
+
+map2(msg_info1$Stime, msg_info1$Etime, )
+n <- mutate(msg, stime=time, )
+
+```
