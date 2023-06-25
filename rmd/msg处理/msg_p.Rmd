@@ -54,5 +54,14 @@ dm3 <- full_join(dm1,dm2) %>% drop_na() %>% full_join(sm) %>% select(participant
 
 # 得出最终含有Stime和Etime信息的msg文件
 dm3
+write_csv(dm3, "/Users/placenameday/R study/yajuan_phd/data/processed/Orinig/msg2/A003_nmsg.csv")
+
+```
+
+
+函数化，和批量处理
+```{r, message=FALSE}
+
+
 
 ```
