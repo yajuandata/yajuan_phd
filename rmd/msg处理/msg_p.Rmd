@@ -11,13 +11,48 @@ library(readxl)
 ```
 
 
-```{r}
-msg <- read_csv("/Users/placenameday/R study/yajuan_phd/data/processed/Orinig/msg/A003.asc.csv")
-msg_info1 <- read_excel("/Users/placenameday/R study/yajuan_phd/info/message1.xlsx")
-msg_info2 <- read_excel("/Users/placenameday/R study/yajuan_phd/info/message2.xlsx")
+处理msg信息，确定每一个stim的开始时间和结束时间，以一个样本为例。
+```{r, message=FALSE}
+# 读取被试msg样本
+msg <- read_csv("/Users/placenameday/R study/yajuan_phd/data/processed/Orinig/msg/A003.asc.csv") %>% rename(trial=block)
 
+# 读取刺激信息列表，1为包含重复刺激名称（用于剔除原始msg无关信息），2为重复信息名称更正（用于合并时间信息）
+msg_info <- read_excel("/Users/placenameday/R study/yajuan_phd/info/message.xlsx") %>% rename(stim=msg)
+msg_info2 <- read_excel("/Users/placenameday/R study/yajuan_phd/info/message2.xlsx") %>% rename(stim=msg)
 
-map2(msg_info1$Stime, msg_info1$Etime, )
-n <- mutate(msg, stime=time, )
+# 定义函数stim_i，用于简化msg信息。方法为：仅保留匹配字符串的信息，并简化为纯刺激信息。
+stim_i <- function(x){
+  mutate(msg, stim=ifelse(str_ends(msg$text, x),x,NA)) %>%
+    drop_na ()
+}
+
+# 生成简化msg信息
+new_msg <- reduce(map(msg_info$stim, stim_i), full_join) %>%
+  arrange(time) %>%
+  select(-text)
+
+# 根据trial对msg进行数据嵌套
+new_msg <- new_msg %>% group_by(trial) %>% nest()
+
+# 处理重复msg信息，对后出现的重复项添加“_2”
+new_msg  <- map2(new_msg$data, new_msg$trial, ~mutate(.x, stim=if_else(duplicated(stim), str_c(stim,"_2"), stim), trial=.y)) %>%
+  bind_rows()
+  
+# 合并msg信息和刺激物时间信息，输入Stime信息
+msg1 <- left_join(new_msg, msg_info2) %>%  mutate(Stime=time)
+
+# 输入固定时间长度刺激的Etime
+sm <- msg1 %>% filter(etype=="s") %>% mutate(Etime=Stime+as.numeric(Etime)) %>% select(-etype,-time)
+
+# 输入不固定时间长度刺激的Etime
+# 1. 取部分列，将Stime改为Etime
+dm1 <- msg1 %>% select(participants, Stime, trial, block, stim) %>% rename(Etime=Stime)
+# 2. 取另一部分列，将Etime改为stim（用于一一对应），将time改为Stime
+dm2 <- msg1 %>% filter(etype=="d") %>% select(participants, time, trial, block, Etime) %>% rename(stim=Etime, Stime=time)
+# 3. 根据stim名称合并上述两部分数据（完成数据对齐，产生对应的Stime和Etime），筛选数据，排序
+dm3 <- full_join(dm1,dm2) %>% drop_na() %>% full_join(sm) %>% select(participants, block, trial, stim, Stime, Etime) %>% arrange(Stime)
+
+# 得出最终含有Stime和Etime信息的msg文件
+dm3
 
 ```
