@@ -38,24 +38,20 @@ new_msg <- new_msg %>% group_by(trial) %>% nest()
 new_msg  <- map2(new_msg$data, new_msg$trial, ~mutate(.x, stim=if_else(duplicated(stim), str_c(stim,"_2"), stim), trial=.y)) %>%
   bind_rows()
   
-# 合并msg信息和刺激物时间信息，输入Stime信息
-msg1 <- left_join(new_msg, msg_info2) %>%  mutate(Stime=time)
+# 合并msg信息和刺激物时间信息，输入Stime信息，输入Etime标记物信息
+msg1 <- left_join(new_msg, msg_info2) %>% select(-Stime) %>% rename(Stime=time, Etime_m=Etime)
+# 分割部分msg1文件，以将刺激信息改为Etime标记物信息（用于稍后对齐）， Stime改为Etime（稍后对齐后实际成为Etime）
+msg2 <- msg1 %>% select(block, trial, Stime, stim) %>% rename(Etime=Stime, Etime_m=stim)
+# 对齐信息，自动生成Etime
+msg3 <- full_join(msg1, msg2) %>% drop_na(stim)
 
-# 输入固定时间长度刺激的Etime
-sm <- msg1 %>% filter(etype=="s") %>% mutate(Etime=Stime+as.numeric(Etime)) %>% select(-etype,-time)
+# 根据msg3信息，生成固定时长Etime
+sm <- msg3 %>% filter(etype=="s") %>% mutate(Etime=Stime+as.numeric(Etime_m)) %>% select(-Etime_m, -etype)
+# 根据msg3信息，生成不固定时长Etime
+dm <- msg3 %>% filter(etype=="d") %>% select(-Etime_m, -etype)
 
-# 输入不固定时间长度刺激的Etime
-# 1. 取部分列，将Stime改为Etime
-dm1 <- msg1 %>% select(participants, Stime, trial, block, stim) %>% rename(Etime=Stime)
-# 2. 取另一部分列，将Etime改为stim（用于一一对应），将time改为Stime
-dm2 <- msg1 %>% filter(etype=="d") %>% select(participants, time, trial, block, Etime) %>% rename(stim=Etime, Stime=time)
-# 3. 根据stim名称合并上述两部分数据（完成数据对齐，产生对应的Stime和Etime），筛选数据，排序
-dm3 <- full_join(dm1,dm2) %>% drop_na() %>% full_join(sm) %>% select(participants, block, trial, stim, Stime, Etime) %>% arrange(Stime)
-
-# 得出最终含有Stime和Etime信息的msg文件
-dm3
-write_csv(dm3, "/Users/placenameday/R study/yajuan_phd/data/processed/Orinig/msg2/A003_nmsg.csv")
-
+# 合并产生最终msg文件
+am <- bind_rows(sm, dm) %>% select(participants, block, trial, stim, Stime, Etime) %>% arrange(Stime)
 ```
 
 
