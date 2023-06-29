@@ -1,0 +1,52 @@
+---
+title: "Untitled"
+output: html_document
+date: "2023-06-28"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+加载包
+```{r}
+library(tidyverse)
+library(readxl)
+library(tidyr)
+library(dplyr)
+
+```
+
+
+```{r}
+nmsg <- read_csv("D:/Data/01/nmsg/A001.asc.csv")
+
+pic1 <- read_csv("D:/R/yajuan_phd/info/pic1.csv") %>% pivot_longer(3:16, names_to = "stim", values_to = "pic")
+pic2 <- read_csv("D:/R/yajuan_phd/info/pic2.csv") %>% pivot_longer(3:13, names_to = "stim", values_to = "pic")
+
+nmsg2 <- full_join(pic1,pic2) %>% full_join(nmsg)
+```
+函数化批量处理
+```{r}
+read_nmsg <- function(a,b){
+  nmsg <- read_csv(a)
+pic1 <- read_csv("D:/R/yajuan_phd/info/pic1.csv") %>% pivot_longer(3:16, names_to = "stim", values_to = "pic")
+pic2 <- read_csv("D:/R/yajuan_phd/info/pic2.csv") %>% pivot_longer(3:13, names_to = "stim", values_to = "pic")
+
+nmsg2 <- full_join(pic1,pic2) %>% full_join(nmsg)
+nmsg2
+write_csv(nmsg2, b)
+}
+#获取文件列表
+file_list <- list.files("D:/Data/01/nmsg/")
+
+#输ru路径列表
+nlist <- str_c("D:/Data/01/nmsg/", file_list)
+nlist2<-str_c("D:/Data/01/nmsg2/", file_list)
+
+#建立输出文件夹
+dir.create("D:/Data/01/nmsg2/")
+
+#运用map2函数批量处理数据
+map2(nlist, nlist2,read_nmsg)
+```

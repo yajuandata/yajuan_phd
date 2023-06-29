@@ -1,3 +1,4 @@
+
 尝试批量处理
 ```{r}
 # 定义一个函数“read_raw”，功能是从asc文件中提取输出raw文件
@@ -43,39 +44,37 @@ read_info <- function(a, dir){
   c <- mutate(c, participants=basename(a))
   write_csv(c, paste(dir,".csv", sep = ""))
 }
+
 #获取asc文件列表
-file_list <- list.files("dd/asc/")
+file_list <- list.files("D:/data/02/asc")
 
 #把asc文件列表变成路径列表
-nlist <- str_c("dd/asc/", file_list)
+nlist <- str_c("D:/data/02/asc/", file_list)
 
-#做一个raw输出的路径列表
-n2list <- str_c("dd/raw/", file_list)
+#做一个fixation输出的路径列表
+n2list <- str_c("D:/data/raw/", file_list)
 
 #做一个sacc输出的路径列表
-n3list <- str_c("dd/sacc/", file_list)
-#做一个fix输出的路径列表
-n4list <- str_c("dd/fix/", file_list)
-#做一个blinks输出的路径列表
-n5list <- str_c("dd/blinks/", file_list)
-#做一个msg输出的路径列表
-n6list <- str_c("dd/msg/", file_list)
-#做一个info输出的路径列表
-n7list <- str_c("dd/info/", file_list)
+n3list <- str_c("D:/data/sacc/", file_list)
+n4list <- str_c("D:/data/fix/", file_list)
+n5list <- str_c("D:/data/blinks/", file_list)
+n6list <- str_c("D:/data/msg/", file_list)
+n7list <- str_c("D:/data/info/", file_list)
+
 #建立相应文件夹
-dir.create("dd/raw/")
-dir.create("dd/sacc/")
-dir.create("dd/fix/")
-dir.create("dd/blinks/")
-dir.create("dd/msg/")
-dir.create("dd/info/")
+dir.create("D:/data/raw/")
+dir.create("D:/data/sacc/")
+dir.create("D:/data/fix/")
+dir.create("D:/data/blinks/")
+dir.create("D:/data/msg/")
+dir.create("D:/data/info/")
+
 #运用map2函数批量处理数据
 map2(nlist, n2list, read_raw)
+
 map2(nlist, n3list, read_sacc)
 map2(nlist, n4list, read_fix)
 map2(nlist, n5list, read_blinks)
 map2(nlist, n6list, read_msg)
 map2(nlist, n7list, read_info)
-
 ```
-

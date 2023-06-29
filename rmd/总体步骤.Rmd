@@ -19,9 +19,7 @@ editor_options:
 
     5.  给刺激材料打位置坐标，文件路径`info\area1.xlsx`。文件包含6列信息，pic为导入的图片名；area为兴趣区名，包含四个区域，语段、题干、回答是、回答否；X1、X2为横纵坐标点；Y1、Y2为纵轴坐标点。
 
-    6.  对应原始的msg文件提取每个刺激物对应的时间戳信息，文件路径`info\message.xlsx`。文件包含4列信息，msg为刺激物的名称；block；Stime为开始时间；Etime为结束时间。
-
-        1.  检查刺激物是否唯一标识
-        2.  
+    6.  对应原始的msg文件提取每个刺激物对应的时间戳信息，文件路径`info\message.xlsx`。文件包含4列信息，msg为刺激物的名称；block；Stime为开始时间；Etime为结束时间。检查刺激物是否唯一标识时发现有重复信息，blank1和blank1_g重复。更改重复的刺激物名称。提取每个刺激物的开始时间和结束时间。具体见rmd\msg处理\msg_r.rmd。
+    7.  实验导入的图片信息（pic1、pic2）与刺激物时间戳(nmsg)信息匹配。文件路劲"info/pic1.csv"、"info/pic2.csv"。具体见rmd\picture处理\picture.rmd。
 2.  数据清洗
 3.  初步分析
