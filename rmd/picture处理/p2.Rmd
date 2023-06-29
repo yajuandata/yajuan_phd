@@ -31,6 +31,7 @@ stim_info <- function(path, path2){
   a <- pmap(list(msg$Stime, msg$Etime, msg$stim, msg$pic), f1) %>% bind_rows()
   
   write_csv(a, path2)
+  gc()
 }
 
 #获取文件列表
