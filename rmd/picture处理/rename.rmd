@@ -12,25 +12,16 @@ library(tidyr)
 library(dplyr)
 ```
 
-```{r}
-setwd("D:/Data/01/blinks2/")
-flies<-list.files("D:/Data/01/blinks2/")
-subfiles<-files[grepl(pattern=".csv",files)] sapply(subfiles,function(x){
-  paste0("blink",x) %>% file.rename(x,.)
-  })
-
-```
 
 ```{r}
-setwd("D:/Data/01/blinks2/")
-datafile <- list.flies(pattern = ".asc")
-filesNewName <-gsub("asc","blink",datafile)
-flie.rebame(datafile,filesNewName)
+myfilepath <- "D:/Data/01/sacc2/"
 
-```
+setwd(myfilepath)
 
-```{r}
-setwd("D:/Data/01/blinks2/")
-files<-list.files("D:/Data/01/blinks2/") for (f in files){ newname<-sub(".asc",'.blink',f) file.rename(f,newname)}dir()
+alltypefiles = dir(myfilepath)
+
+newname = gsub(pattern = '.asc',replacement = '.sacc',x = alltypefiles)
+
+file.rename(alltypefiles,newname)
 ```
 
