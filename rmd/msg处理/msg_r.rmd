@@ -3,108 +3,74 @@ title: "msg"
 output: html_document
 date: "2023-06-26"
 ---
+msg信息标准化批量处理方法
+提取关键msg信息，标准化，添加刺激物图片信息
+
 加载包
 ```{r}
 library(tidyverse)
 library(readxl)
 ```
 
-处理msg信息，确定每一个stim的开始时间和结束时间，以一个样本为例。
-```{r, message=FALSE}
-# 读取被试msg样本
-msg <- read_csv("D:/Data/01/msg/A003.asc.csv") %>% rename(trial=block)
-
-# 读取刺激信息列表，1为包含重复刺激名称（用于剔除原始msg无关信息），2为重复信息名称更正（用于合并时间信息）
-msg_info <- read_excel("D:/R/yajuan_phd/info/message.xlsx") %>% rename(stim=msg)
-msg_info2 <- read_excel("D:/R/yajuan_phd/info/message2.xlsx") %>% rename(stim=msg)
-# 定义函数stim_i，用于简化msg信息。方法为：仅保留匹配字符串的信息，并简化为纯刺激信息。
-stim_i <- function(x){
-  mutate(msg, stim=ifelse(str_ends(msg$text, x),x,NA)) %>%
-    drop_na ()
-}
-
-# 生成简化msg信息
-new_msg <- reduce(map(msg_info$stim, stim_i), full_join) %>%
-  arrange(time) %>%
-  select(-text)
-
-# 根据trial对msg进行数据嵌套
-new_msg <- new_msg %>% group_by(trial) %>% nest()
-
-# 处理重复msg信息，对后出现的重复项添加“_2”
-new_msg  <- map2(new_msg$data, new_msg$trial, ~mutate(.x, stim=if_else(duplicated(stim), str_c(stim,"_2"), stim), trial=.y)) %>%
-  bind_rows()
-  
-# 合并msg信息和刺激物时间信息，输入Stime信息，输入Etime标记物信息
-msg1 <- left_join(new_msg, msg_info2) %>% select(-Stime) %>% rename(Stime=time, Etime_m=Etime)
-# 分割部分msg1文件，以将刺激信息改为Etime标记物信息（用于稍后对齐）， Stime改为Etime（稍后对齐后实际成为Etime）
-msg2 <- msg1 %>% select(block, trial, Stime, stim) %>% rename(Etime=Stime, Etime_m=stim)
-# 对齐信息，自动生成Etime
-msg3 <- full_join(msg1, msg2) %>% drop_na(stim)
-
-# 根据msg3信息，生成固定时长Etime
-sm <- msg3 %>% filter(etype=="s") %>% mutate(Etime=Stime+as.numeric(Etime_m)) %>% select(-Etime_m, -etype)
-# 根据msg3信息，生成不固定时长Etime
-dm <- msg3 %>% filter(etype=="d") %>% select(-Etime_m, -etype)
-
-# 合并产生最终msg文件
-am <- bind_rows(sm, dm) %>% select(participants, block, trial, stim, Stime, Etime) %>% arrange(Stime)
-am
-  write_csv(am, b)
-```
-
-
 函数化，和批量处理
 ```{r, message=FALSE}
 read_msg <- function(a,b){
   msg <- read_csv(a)  %>% rename(trial=block)
-# 读取刺激信息列表，1为包含重复刺激名称（用于剔除原始msg无关信息），2为重复信息名称更正（用于合并时间信息）
-msg_info <- read_excel("D:/R/yajuan_phd/info/message.xlsx") %>% rename(stim=msg)
-msg_info2 <- read_excel("D:/R/yajuan_phd/info/message2.xlsx") %>% rename(stim=msg)
-# 定义函数stim_i，用于简化msg信息。方法为：仅保留匹配字符串的信息，并简化为纯刺激信息。
-stim_i <- function(x){
-  mutate(msg, stim=ifelse(str_ends(msg$text, x),x,NA)) %>%
-    drop_na ()
-}
+  # 读取刺激信息列表，1为包含重复刺激名称（用于剔除原始msg无关信息），2为重复信息名称更正（用于合并时间信息）
+  msg_info <- read_excel("/Users/placenameday/R study/yajuan_phd/info/message.xlsx") %>% rename(stim=msg)
+  msg_info2 <- read_excel("/Users/placenameday/R study/yajuan_phd/info/message2.xlsx") %>% rename(stim=msg)
+  # 定义函数stim_i，用于简化msg信息。方法为：仅保留匹配字符串的信息，并简化为纯刺激信息。
+  stim_i <- function(x){
+    mutate(msg, stim=ifelse(str_ends(msg$text, x),x,NA)) %>%
+      drop_na ()
+  }
 
-# 生成简化msg信息
-new_msg <- reduce(map(msg_info$stim, stim_i), full_join) %>%
-  arrange(time) %>%
-  select(-text)
+  # 生成简化msg信息
+  new_msg <- reduce(map(msg_info$stim, stim_i), full_join) %>%
+    arrange(time) %>%
+    select(-text)
 
-# 根据trial对msg进行数据嵌套
-new_msg <- new_msg %>% group_by(trial) %>% nest()
+  # 根据trial对msg进行数据嵌套
+  new_msg <- new_msg %>% group_by(trial) %>% nest()
 
-# 处理重复msg信息，对后出现的重复项添加“_2”
-new_msg  <- map2(new_msg$data, new_msg$trial, ~mutate(.x, stim=if_else(duplicated(stim), str_c(stim,"_2"), stim), trial=.y)) %>%
-  bind_rows()
+  # 处理重复msg信息，对后出现的重复项添加“_2”
+  new_msg  <- map2(new_msg$data, new_msg$trial, ~mutate(.x, stim=if_else(duplicated(stim), str_c(stim,"_2"), stim), trial=.y)) %>%
+    bind_rows()
   
-# 合并msg信息和刺激物时间信息，输入Stime信息，输入Etime标记物信息
-msg1 <- left_join(new_msg, msg_info2) %>% select(-Stime) %>% rename(Stime=time, Etime_m=Etime)
-# 分割部分msg1文件，以将刺激信息改为Etime标记物信息（用于稍后对齐）， Stime改为Etime（稍后对齐后实际成为Etime）
-msg2 <- msg1 %>% select(block, trial, Stime, stim) %>% rename(Etime=Stime, Etime_m=stim)
-# 对齐信息，自动生成Etime
-msg3 <- full_join(msg1, msg2) %>% drop_na(stim)
+  # 合并msg信息和刺激物时间信息，输入Stime信息，输入Etime标记物信息
+  msg1 <- left_join(new_msg, msg_info2) %>% select(-Stime) %>% rename(Stime=time, Etime_m=Etime)
+  # 分割部分msg1文件，以将刺激信息改为Etime标记物信息（用于稍后对齐）， Stime改为Etime（稍后对齐后实际成为Etime）
+  msg2 <- msg1 %>% select(block, trial, Stime, stim) %>% rename(Etime=Stime, Etime_m=stim)
+  # 对齐信息，自动生成Etime
+  msg3 <- full_join(msg1, msg2) %>% drop_na(stim)
 
-# 根据msg3信息，生成固定时长Etime
-sm <- msg3 %>% filter(etype=="s") %>% mutate(Etime=Stime+as.numeric(Etime_m)) %>% select(-Etime_m, -etype)
-# 根据msg3信息，生成不固定时长Etime
-dm <- msg3 %>% filter(etype=="d") %>% select(-Etime_m, -etype)
+  # 根据msg3信息，生成固定时长Etime
+  sm <- msg3 %>% filter(etype=="s") %>% mutate(Etime=Stime+as.numeric(Etime_m)) %>% select(-Etime_m, -etype)
+  # 根据msg3信息，生成不固定时长Etime
+  dm <- msg3 %>% filter(etype=="d") %>% select(-Etime_m, -etype)
+  
+  # 合并产生最终msg文件
+  am <- bind_rows(sm, dm) %>% select(participants, block, trial, stim, Stime, Etime) %>% arrange(Stime)
+  
+  am <- full_join(pic1,pic2) %>% full_join(am)
 
-# 合并产生最终msg文件
-am <- bind_rows(sm, dm) %>% select(participants, block, trial, stim, Stime, Etime) %>% arrange(Stime)
-am
   write_csv(am, b)
 }
+
 #获取msg文件列表
-file_list <- list.files("D:/Data/01/msg/")
+file_list <- list.files("/Users/placenameday/R study/yajuan_data/out/msg")
 
 #把msg文件列表变成输ru路径列表
-nlist <- str_c("D:/Data/01/msg/", file_list)
-nlist2<-str_c("D:/Data/01/nmsg/", file_list)
+nlist <- str_c("/Users/placenameday/R study/yajuan_data/out/msg/", file_list)
+nlist2<-str_c("/Users/placenameday/R study/yajuan_data/out/nmsg/", file_list)
+
+#图片刺激物信息
+pic1 <- read_csv("/Users/placenameday/R study/yajuan_phd/info/pic1.csv") %>% pivot_longer(3:16, names_to = "stim", values_to = "pic")
+pic2 <- read_csv("/Users/placenameday/R study/yajuan_phd/info/pic2.csv") %>% pivot_longer(3:13, names_to = "stim", values_to = "pic")
+
 
 #建立输出文件夹
-dir.create("D:/Data/01/nmsg/")
+dir.create("/Users/placenameday/R study/yajuan_data/out/nmsg")
 
 #运用map2函数批量处理数据
 map2(nlist, nlist2,read_msg)

@@ -1,80 +1,59 @@
+加载包
+```{r}
+library(tidyverse)
+library(eyelinker)
+```
+
+对ASC数据文件解包，分别输出各个眼动数据文件
 
 尝试批量处理
 ```{r}
-# 定义一个函数“read_raw”，功能是从asc文件中提取输出raw文件
-read_raw <- function(a, dir){
+# 定义一个函数“out_asc”，功能是从asc文件中提取输出各眼动数据文件
+out_asc <- function(a, dir_r, dir_s, dir_f, dir_b, dir_m, dir_in){
   b <- read_asc(a)
-  c <- b$raw
-  c <- mutate(c, participants=basename(a))
-  write_csv(c, paste(dir,".csv", sep = ""))
+  
+  raw <- b$raw %>% mutate(participants=basename(a))
+  sacc <- b$sacc %>% mutate(participants=basename(a))
+  fix <- b$fix %>% mutate(participants=basename(a))
+  blinks <- b$blinks %>% mutate(participants=basename(a))
+  msg <- b$msg %>% mutate(participants=basename(a))
+  info <- b$info %>% mutate(participants=basename(a))
+  
+  write_csv(raw, paste(dir_r,".csv", sep = ""))
+  write_csv(sacc, paste(dir_s,".csv", sep = ""))
+  write_csv(fix, paste(dir_f,".csv", sep = ""))
+  write_csv(blinks, paste(dir_b,".csv", sep = ""))
+  write_csv(msg, paste(dir_m,".csv", sep = ""))
+  write_csv(info, paste(dir_in,".csv", sep = ""))
+  gc()
 }
 
-# 定义一个函数“read_sacc”，功能是从asc文件中提取输出sacc文件
-read_sacc <- function(a, dir){
-  b <- read_asc(a)
-  c <- b$sacc
-  c <- mutate(c, participants=basename(a))
-  write_csv(c, paste(dir,".csv", sep = ""))
-}
-# 定义一个函数“read_fix”，功能是从asc文件中提取输出fix文件
-read_fix <- function(a, dir){
-  b <- read_asc(a)
-  c <- b$fix
-  c <- mutate(c, participants=basename(a))
-  write_csv(c, paste(dir,".csv", sep = ""))
-}
-# 定义一个函数“read_blinks”，功能是从asc文件中提取输出blinks文件
-read_blinks <- function(a, dir){
-  b <- read_asc(a)
-  c <- b$blinks
-  c <- mutate(c, participants=basename(a))
-  write_csv(c, paste(dir,".csv", sep = ""))
-}
-# 定义一个函数“read_msg”，功能是从asc文件中提取输出msg文件
-read_msg <- function(a, dir){
-  b <- read_asc(a)
-  c <- b$msg
-  c <- mutate(c, participants=basename(a))
-  write_csv(c, paste(dir,".csv", sep = ""))
-}
-# 定义一个函数“read_info”，功能是从asc文件中提取输出nifo文件
-read_info <- function(a, dir){
-  b <- read_asc(a)
-  c <- b$info
-  c <- mutate(c, participants=basename(a))
-  write_csv(c, paste(dir,".csv", sep = ""))
-}
+
 
 #获取asc文件列表
-file_list <- list.files("D:/data/02/asc")
+file_list <- list.files("/Users/placenameday/R study/yajuan_data/asc")
 
 #把asc文件列表变成路径列表
-nlist <- str_c("D:/data/02/asc/", file_list)
+nlist <- str_c("/Users/placenameday/R study/yajuan_data/asc/", file_list)
 
-#做一个fixation输出的路径列表
-n2list <- str_c("D:/data/raw/", file_list)
-
-#做一个sacc输出的路径列表
-n3list <- str_c("D:/data/sacc/", file_list)
-n4list <- str_c("D:/data/fix/", file_list)
-n5list <- str_c("D:/data/blinks/", file_list)
-n6list <- str_c("D:/data/msg/", file_list)
-n7list <- str_c("D:/data/info/", file_list)
+#做输出的路径列表
+raw_list <- str_c("/Users/placenameday/R study/yajuan_data/out/raw/", file_list)
+sacc_list <- str_c("/Users/placenameday/R study/yajuan_data/out/sacc/", file_list)
+fix_list <- str_c("/Users/placenameday/R study/yajuan_data/out/fix/", file_list)
+blinks_list <- str_c("/Users/placenameday/R study/yajuan_data/out/blinks/", file_list)
+msg_list <- str_c("/Users/placenameday/R study/yajuan_data/out/msg/", file_list)
+info_list <- str_c("/Users/placenameday/R study/yajuan_data/out/info/", file_list)
 
 #建立相应文件夹
-dir.create("D:/data/raw/")
-dir.create("D:/data/sacc/")
-dir.create("D:/data/fix/")
-dir.create("D:/data/blinks/")
-dir.create("D:/data/msg/")
-dir.create("D:/data/info/")
+dir.create("/Users/placenameday/R study/yajuan_data/out/raw/")
+dir.create("/Users/placenameday/R study/yajuan_data/out/sacc/")
+dir.create("/Users/placenameday/R study/yajuan_data/out/fix/")
+dir.create("/Users/placenameday/R study/yajuan_data/out/blinks/")
+dir.create("/Users/placenameday/R study/yajuan_data/out/msg/")
+dir.create("/Users/placenameday/R study/yajuan_data/out/info/")
 
-#运用map2函数批量处理数据
-map2(nlist, n2list, read_raw)
+#运用map函数批量处理数据
+pmap(list(nlist, raw_list, sacc_list, fix_list, blinks_list, msg_list, info_list), out_asc)
 
-map2(nlist, n3list, read_sacc)
-map2(nlist, n4list, read_fix)
-map2(nlist, n5list, read_blinks)
-map2(nlist, n6list, read_msg)
-map2(nlist, n7list, read_info)
+
 ```
