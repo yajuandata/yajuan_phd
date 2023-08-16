@@ -8,6 +8,12 @@ date: "2023-06-28"
 ```{r}
 library(tidyverse)
 library(readxl)
+# 多线程数据处理包data.table用于读取加速
+library(data.table)
+# 多线程数据处理包furrr用于函数运行加速
+library(furrr)
+# 设定furrr为并行计算，5线程
+plan(multisession, workers = 5)
 ```
 
 
@@ -16,6 +22,7 @@ library(readxl)
 nmsg2_list <- list.files("/Users/placenameday/R study/yajuan_data/out/nmsg", full.names = T)
 nmsg2 <- read_csv(nmsg2_list)
 
+# 一般眼动数据标记方法
 stim_info <- function(path, path2){
   data <- read_csv(path)
   
@@ -33,8 +40,9 @@ stim_info <- function(path, path2){
   gc()
 }
 
+# RAW文件眼动数据标记方法，采用多线程计算
 stim_info2 <- function(path, path2){
-  data <- read_csv(path)
+  data <- fread(path)
   
   par <- str_sub(path, start = -12L, end = -5L)
   
@@ -45,7 +53,7 @@ stim_info2 <- function(path, path2){
       drop_na()
   }
 
-  a <- pmap(list(nmsg2$Stime, nmsg2$Etime, nmsg2$stim, nmsg2$pic), f1) %>% bind_rows()
+  a <- future_pmap(list(nmsg2$Stime, nmsg2$Etime, nmsg2$stim, nmsg2$pic), f1) %>% bind_rows()
  write_csv(a, path2) 
   gc()
 }
@@ -117,7 +125,7 @@ blink_list2 <- str_c("/Users/placenameday/R study/yajuan_data/out/raw2/", file_l
 #建立输出文件夹
 dir.create("/Users/placenameday/R study/yajuan_data/out/raw2/")
 
-map2(blink_list, blink_list2, stim_info2)
+future_map2(blink_list, blink_list2, stim_info2)
 ```
 
 
