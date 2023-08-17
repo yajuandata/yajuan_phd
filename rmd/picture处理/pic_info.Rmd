@@ -23,38 +23,38 @@ nmsg2_list <- list.files("/Users/placenameday/R study/yajuan_data/out/nmsg", ful
 nmsg2 <- read_csv(nmsg2_list)
 
 # 一般眼动数据标记方法
-stim_info <- function(path, path2){
+stim_info <- function(path, path2) {
   data <- read_csv(path)
-  
+
   par <- str_sub(path, start = -12L, end = -5L)
-  
-  nmsg2 <- nmsg2 %>% filter(participants==par)
-  
-  f1 <- function(a,b,c,d){
-    mutate(data, stim=if_else(between(stime, a, b) & between(etime, a, b), c,NA), pic=if_else(between(stime, a, b) & between(etime, a, b), d, NA)) %>%
+
+  nmsg2 <- nmsg2 %>% filter(participants == par)
+
+  f1 <- function(a, b, c, d) {
+    mutate(data, stim = if_else(between(stime, a, b) & between(etime, a, b), c, NA), pic = if_else(between(stime, a, b) & between(etime, a, b), d, NA)) %>%
       drop_na()
   }
 
   a <- pmap(list(nmsg2$Stime, nmsg2$Etime, nmsg2$stim, nmsg2$pic), f1) %>% bind_rows()
- write_csv(a, path2) 
+  write_csv(a, path2)
   gc()
 }
 
 # RAW文件眼动数据标记方法，采用多线程计算
-stim_info2 <- function(path, path2){
+stim_info2 <- function(path, path2) {
   data <- fread(path)
-  
+
   par <- str_sub(path, start = -12L, end = -5L)
-  
-  nmsg2 <- nmsg2 %>% filter(participants==par)
-  
-  f1 <- function(a,b,c,d){
-    mutate(data, stim=if_else(between(time, a, b), c,NA), pic=if_else(between(time, a, b), d, NA)) %>%
+
+  nmsg2 <- nmsg2 %>% filter(participants == par)
+
+  f1 <- function(a, b, c, d) {
+    mutate(data, stim = if_else(between(time, a, b), c, NA), pic = if_else(between(time, a, b), d, NA)) %>%
       drop_na()
   }
 
   a <- future_pmap(list(nmsg2$Stime, nmsg2$Etime, nmsg2$stim, nmsg2$pic), f1) %>% bind_rows()
- write_csv(a, path2) 
+  write_csv(a, path2)
   gc()
 }
 ```
@@ -62,16 +62,16 @@ stim_info2 <- function(path, path2){
 
 bilnk
 ```{r}
-#获取文件列表
-file_list<- list.files("/Users/placenameday/R study/yajuan_data/out/blinks")
+# 获取文件列表
+file_list <- list.files("/Users/placenameday/R study/yajuan_data/out/blinks")
 
-#输入路径列表
+# 输入路径列表
 blink_list <- str_c("/Users/placenameday/R study/yajuan_data/out/blinks/", file_list)
 
-#输出路径
+# 输出路径
 blink_list2 <- str_c("/Users/placenameday/R study/yajuan_data/out/blinks2/", file_list)
 
-#建立输出文件夹
+# 建立输出文件夹
 dir.create("/Users/placenameday/R study/yajuan_data/out/blinks2/")
 
 map2(blink_list, blink_list2, stim_info)
@@ -79,16 +79,16 @@ map2(blink_list, blink_list2, stim_info)
 
 fix
 ```{r}
-#获取文件列表
-file_list<- list.files("/Users/placenameday/R study/yajuan_data/out/fix")
+# 获取文件列表
+file_list <- list.files("/Users/placenameday/R study/yajuan_data/out/fix")
 
-#输入路径列表
+# 输入路径列表
 blink_list <- str_c("/Users/placenameday/R study/yajuan_data/out/fix/", file_list)
 
-#输出路径
+# 输出路径
 blink_list2 <- str_c("/Users/placenameday/R study/yajuan_data/out/fix2/", file_list)
 
-#建立输出文件夹
+# 建立输出文件夹
 dir.create("/Users/placenameday/R study/yajuan_data/out/fix2/")
 
 map2(blink_list, blink_list2, stim_info)
@@ -96,16 +96,16 @@ map2(blink_list, blink_list2, stim_info)
 
 sacc
 ```{r}
-#获取文件列表
-file_list<- list.files("/Users/placenameday/R study/yajuan_data/out/sacc")
+# 获取文件列表
+file_list <- list.files("/Users/placenameday/R study/yajuan_data/out/sacc")
 
-#输入路径列表
+# 输入路径列表
 blink_list <- str_c("/Users/placenameday/R study/yajuan_data/out/sacc/", file_list)
 
-#输出路径
+# 输出路径
 blink_list2 <- str_c("/Users/placenameday/R study/yajuan_data/out/sacc2/", file_list)
 
-#建立输出文件夹
+# 建立输出文件夹
 dir.create("/Users/placenameday/R study/yajuan_data/out/sacc2/")
 
 map2(blink_list, blink_list2, stim_info)
@@ -113,16 +113,16 @@ map2(blink_list, blink_list2, stim_info)
 
 raw
 ```{r}
-#获取文件列表
-file_list<- list.files("/Users/placenameday/R study/yajuan_data/out/raw")
+# 获取文件列表
+file_list <- list.files("/Users/placenameday/R study/yajuan_data/out/raw")
 
-#输入路径列表
+# 输入路径列表
 blink_list <- str_c("/Users/placenameday/R study/yajuan_data/out/raw/", file_list)
 
-#输出路径
+# 输出路径
 blink_list2 <- str_c("/Users/placenameday/R study/yajuan_data/out/raw2/", file_list)
 
-#建立输出文件夹
+# 建立输出文件夹
 dir.create("/Users/placenameday/R study/yajuan_data/out/raw2/")
 
 future_map2(blink_list, blink_list2, stim_info2)

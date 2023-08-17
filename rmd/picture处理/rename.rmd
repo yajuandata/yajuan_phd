@@ -16,11 +16,11 @@ myfilepath <- "/Users/placenameday/R study/yajuan_data/out/blinks2"
 
 setwd(myfilepath)
 
-alltypefiles = dir(myfilepath)
+alltypefiles <- dir(myfilepath)
 
-newname = gsub(pattern = '.sacc',replacement = '.blink',x = alltypefiles)
+newname <- gsub(pattern = ".sacc", replacement = ".blink", x = alltypefiles)
 
-file.rename(alltypefiles,newname)
+file.rename(alltypefiles, newname)
 
 
 
@@ -28,11 +28,11 @@ myfilepath <- "/Users/placenameday/R study/yajuan_data/out/fix2"
 
 setwd(myfilepath)
 
-alltypefiles = dir(myfilepath)
+alltypefiles <- dir(myfilepath)
 
-newname = gsub(pattern = '.asc',replacement = '.fix',x = alltypefiles)
+newname <- gsub(pattern = ".asc", replacement = ".fix", x = alltypefiles)
 
-file.rename(alltypefiles,newname)
+file.rename(alltypefiles, newname)
 
 
 
@@ -40,22 +40,21 @@ myfilepath <- "/Users/placenameday/R study/yajuan_data/out/sacc2"
 
 setwd(myfilepath)
 
-alltypefiles = dir(myfilepath)
+alltypefiles <- dir(myfilepath)
 
-newname = gsub(pattern = '.asc',replacement = '.sacc',x = alltypefiles)
+newname <- gsub(pattern = ".asc", replacement = ".sacc", x = alltypefiles)
 
-file.rename(alltypefiles,newname)
+file.rename(alltypefiles, newname)
 
 
 myfilepath <- "/Users/placenameday/R study/yajuan_data/out/raw2"
 
 setwd(myfilepath)
 
-alltypefiles = dir(myfilepath)
+alltypefiles <- dir(myfilepath)
 
-newname = gsub(pattern = '.asc',replacement = '.raw',x = alltypefiles)
+newname <- gsub(pattern = ".asc", replacement = ".raw", x = alltypefiles)
 
-file.rename(alltypefiles,newname)
-
+file.rename(alltypefiles, newname)
 ```
 
