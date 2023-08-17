@@ -9,34 +9,34 @@ library(eyelinker)
 尝试批量处理
 ```{r}
 # 定义一个函数“out_asc”，功能是从asc文件中提取输出各眼动数据文件
-out_asc <- function(a, dir_r, dir_s, dir_f, dir_b, dir_m, dir_in){
+out_asc <- function(a, dir_r, dir_s, dir_f, dir_b, dir_m, dir_in) {
   b <- read_asc(a)
-  
-  raw <- b$raw %>% mutate(participants=basename(a))
-  sacc <- b$sacc %>% mutate(participants=basename(a))
-  fix <- b$fix %>% mutate(participants=basename(a))
-  blinks <- b$blinks %>% mutate(participants=basename(a))
-  msg <- b$msg %>% mutate(participants=basename(a))
-  info <- b$info %>% mutate(participants=basename(a))
-  
-  write_csv(raw, paste(dir_r,".csv", sep = ""))
-  write_csv(sacc, paste(dir_s,".csv", sep = ""))
-  write_csv(fix, paste(dir_f,".csv", sep = ""))
-  write_csv(blinks, paste(dir_b,".csv", sep = ""))
-  write_csv(msg, paste(dir_m,".csv", sep = ""))
-  write_csv(info, paste(dir_in,".csv", sep = ""))
+
+  raw <- b$raw %>% mutate(participants = basename(a))
+  sacc <- b$sacc %>% mutate(participants = basename(a))
+  fix <- b$fix %>% mutate(participants = basename(a))
+  blinks <- b$blinks %>% mutate(participants = basename(a))
+  msg <- b$msg %>% mutate(participants = basename(a))
+  info <- b$info %>% mutate(participants = basename(a))
+
+  write_csv(raw, paste(dir_r, ".csv", sep = ""))
+  write_csv(sacc, paste(dir_s, ".csv", sep = ""))
+  write_csv(fix, paste(dir_f, ".csv", sep = ""))
+  write_csv(blinks, paste(dir_b, ".csv", sep = ""))
+  write_csv(msg, paste(dir_m, ".csv", sep = ""))
+  write_csv(info, paste(dir_in, ".csv", sep = ""))
   gc()
 }
 
 
 
-#获取asc文件列表
+# 获取asc文件列表
 file_list <- list.files("/Users/placenameday/R study/yajuan_data/asc")
 
-#把asc文件列表变成路径列表
+# 把asc文件列表变成路径列表
 nlist <- str_c("/Users/placenameday/R study/yajuan_data/asc/", file_list)
 
-#做输出的路径列表
+# 做输出的路径列表
 raw_list <- str_c("/Users/placenameday/R study/yajuan_data/out/raw/", file_list)
 sacc_list <- str_c("/Users/placenameday/R study/yajuan_data/out/sacc/", file_list)
 fix_list <- str_c("/Users/placenameday/R study/yajuan_data/out/fix/", file_list)
@@ -44,7 +44,7 @@ blinks_list <- str_c("/Users/placenameday/R study/yajuan_data/out/blinks/", file
 msg_list <- str_c("/Users/placenameday/R study/yajuan_data/out/msg/", file_list)
 info_list <- str_c("/Users/placenameday/R study/yajuan_data/out/info/", file_list)
 
-#建立相应文件夹
+# 建立相应文件夹
 dir.create("/Users/placenameday/R study/yajuan_data/out/raw/")
 dir.create("/Users/placenameday/R study/yajuan_data/out/sacc/")
 dir.create("/Users/placenameday/R study/yajuan_data/out/fix/")
@@ -52,8 +52,6 @@ dir.create("/Users/placenameday/R study/yajuan_data/out/blinks/")
 dir.create("/Users/placenameday/R study/yajuan_data/out/msg/")
 dir.create("/Users/placenameday/R study/yajuan_data/out/info/")
 
-#运用map函数批量处理数据
+# 运用map函数批量处理数据
 pmap(list(nlist, raw_list, sacc_list, fix_list, blinks_list, msg_list, info_list), out_asc)
-
-
 ```
