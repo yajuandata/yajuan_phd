@@ -15,7 +15,7 @@ library(furrr)
 
 读取AOI信息
 ```{r}
-# 定义函数ac1, 在特定pic下与特定area下，根据坐标信息返回打标判断
+# 定义函数ac1, 在特定pic下与特定area下，根据fix数据坐标信息返回打标判断
 aoi_cacu1 <- function(x, a, b) {
   aoi1 <- a %>% filter(area == x)
   
