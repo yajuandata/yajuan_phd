@@ -1,0 +1,74 @@
+---
+title: "AOI"
+output: html_document
+date: "2023-08-17"
+---
+摘要：标注数据的AOI
+
+加载包
+```{r} 
+library(tidyverse)
+library(readxl)
+library(writexl)
+library(furrr)
+```
+
+读取AOI信息
+```{r}
+# 定义函数ac1, 在特定pic下与特定area下，根据坐标信息返回打标判断
+aoi_cacu1 <- function(x, a, b) {
+  aoi1 <- a %>% filter(area == x)
+  
+  fixation2 <- b %>%
+    mutate(!!x :=case_when(between(axp, aoi1$X1, aoi1$X2)&between(ayp, aoi1$Y1, aoi1$Y3)~1,
+                            .default = 0))
+}
+
+# 定义函数ac2, 在特定pic下遍历全部area值，并利用ac1进行打标
+aoi_cacu2 <- function(x, a, f) {
+  ta <- a %>% filter(pic == x)
+
+  tf <- f %>% filter(pic == x)
+  
+  tt2 <- reduce(future_map(ta$area, ~aoi_cacu1(.x, ta, tf)), full_join)
+}
+
+# 定义函数ac3，将特定目录下的数据文件批量打标并输出，每行增加注释
+aoi_cacu3 <- function(x) {
+  # 读取欲打标数据
+  fixation <- read_csv(x)
+  # 提取数据中包含的刺激物列表
+  piclist <- unique(fixation$pic)
+
+  # 读取AOI坐标信息，将坐标部分数据转换为数字格式，仅保留在拥有AOI的刺激物列表中的数据
+  aoi <- read_excel("/Users/placenameday/R study/yajuan_phd/info/area2.xlsx") %>%
+    mutate_at(vars(3:6), as.numeric) %>% filter(pic %in% piclist)
+  # 提取拥有AOI的刺激物列表
+  aoipiclist <- unique(aoi$pic)
+
+  # 读取数据文件，并仅保留在拥有AOI的刺激物列表中的数据
+  fixation <- fixation %>% filter(pic %in% aoipiclist)
+  
+  # 处理当前数据，打标AOI信息
+  fixation2 <- future_map(piclist, ~aoi_cacu2(.x, aoi, fixation)) %>% bind_rows()
+
+  # 输出数据
+  write_csv(fixation2, paste0(x, ".aoi.csv"))
+}
+
+# 定义函数ac4，接收一个目录参数，将目录下的数据文件批量使用ac3进行处理并输出
+aoi_cacu4 <- function(x) {
+  # 获取目录下的文件列表
+  filelist <- list.files(x, full.names = TRUE)
+  # 批量处理文件
+  future_map(filelist, aoi_cacu3)
+  gc()
+}
+
+plan(multisession, workers = 6)
+aoi_cacu4("/Users/placenameday/Downloads/fix2_test")
+plan(sequential)
+
+
+
+```
