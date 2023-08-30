@@ -34,7 +34,7 @@ aoi_cacu2 <- function(x, a, f) {
 }
 
 # 定义函数ac3，将特定目录下的数据文件批量打标并输出，每行增加注释
-aoi_cacu3 <- function(x) {
+aoi_cacu3 <- function(x, y) {
   # 读取欲打标数据
   fixation <- read_csv(x)
   # 提取数据中包含的刺激物列表
@@ -53,22 +53,31 @@ aoi_cacu3 <- function(x) {
   fixation2 <- future_map(piclist, ~aoi_cacu2(.x, aoi, fixation)) %>% bind_rows()
 
   # 输出数据
-  write_csv(fixation2, paste0(x, ".aoi.csv"))
+  write_csv(fixation2, paste0(y, ".aoi.csv"))
 }
 
-# 定义函数ac4，接收一个目录参数，将目录下的数据文件批量使用ac3进行处理并输出
-aoi_cacu4 <- function(x) {
+# 定义函数ac5，接收一个目录A，并在A目录的上级目录新建一个目录B，名称为A的上级+"_AOI"。生成A目录下的文建列表，同时结合A的文件名与B目录，生成B目录下的文件列表。批量处理A目录下的文件，将处理结果输出到B目录下的文件列表。
+aoi_cacu5 <- function(x) {
   # 获取目录下的文件列表
   filelist <- list.files(x, full.names = TRUE)
+  # 获取目录名
+  dirname <- basename(x)
+  # 获取上级目录名
+  parentdir <- dirname(x)
+  # 新建目录
+  dir.create(paste0(parentdir, "/", dirname, "_AOI"))
+  # 生成新目录下的文件列表
+  filelist2 <- paste0(parentdir, "/", dirname, "_AOI/", basename(filelist))
   # 批量处理文件
-  future_map(filelist, aoi_cacu3)
+  future_map2(filelist, filelist2, aoi_cacu3)
   gc()
 }
 
+# 设置多线程处理
 plan(multisession, workers = 6)
-aoi_cacu4("/Users/placenameday/Downloads/fix2_test")
+# 批量处理数据
+aoi_cacu5("/Users/placenameday/Downloads/fix2_test")
+# 恢复单线程处理
 plan(sequential)
-
-
 
 ```
