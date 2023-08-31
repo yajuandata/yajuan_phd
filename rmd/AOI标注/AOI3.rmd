@@ -3,24 +3,24 @@ title: "AOI"
 output: html_document
 date: "2023-08-17"
 ---
-摘要：标注fixation数据的AOI
+摘要：标注raw数据的AOI
 
 加载包
 ```{r} 
 library(tidyverse)
 library(readxl)
-library(writexl)
 library(furrr)
+library(data.table)
 ```
 
 读取AOI信息
-```{r}
+```{r, echo=FALSE, message=FALSE}
 # 定义函数ac1, 在特定pic下与特定area下，根据fix数据坐标信息返回打标判断
 aoi_cacu1 <- function(x, a, b) {
   aoi1 <- a %>% filter(area == x)
   
   fixation2 <- b %>%
-    mutate(!!x :=case_when(between(axp, aoi1$X1, aoi1$X2)&between(ayp, aoi1$Y1, aoi1$Y3)~1,
+    mutate(!!x :=case_when((between(xpl, aoi1$X1, aoi1$X2)&between(ypl, aoi1$Y1, aoi1$Y3))|(between(xpr, aoi1$X1, aoi1$X2)&between(ypr, aoi1$Y1, aoi1$Y3))~1,
                             .default = 0))
 }
 
@@ -36,7 +36,7 @@ aoi_cacu2 <- function(x, a, f) {
 # 定义函数ac3，将特定目录下的数据文件批量打标并输出，每行增加注释
 aoi_cacu3 <- function(x, y) {
   # 读取数据文件
-  data <- read_csv(x)
+  data <- fread(x)
   
   # 读取AOI坐标信息，将坐标部分数据转换为数字格式
   aoi <- read_excel("/Users/placenameday/R study/yajuan_phd/info/area2.xlsx") %>%
@@ -53,7 +53,7 @@ aoi_cacu3 <- function(x, y) {
   fixation2 <- future_map(piclist, ~aoi_cacu2(.x, aoi_t, data_t)) %>% bind_rows()
 
   # 输出数据
-  write_csv(fixation2, paste0(y, ".aoi.csv"))
+  fwrite(fixation2, paste0(y, ".aoi.csv"))
 }
 
 # 定义函数ac5，接收一个目录A，并在A目录的上级目录新建一个目录B，名称为A的上级+"_AOI"。生成A目录下的文建列表，同时结合A的文件名与B目录，生成B目录下的文件列表。批量处理A目录下的文件，将处理结果输出到B目录下的文件列表。
@@ -76,7 +76,7 @@ aoi_cacu5 <- function(x) {
 # 设置多线程处理
 plan(multisession, workers = 6)
 # 批量处理数据
-aoi_cacu5("/Users/placenameday/Downloads/fix2_test")
+aoi_cacu5("/Users/placenameday/Downloads/raw2_test")
 # 恢复单线程处理
 plan(sequential)
 
