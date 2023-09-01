@@ -3,7 +3,7 @@ title: "AOI"
 output: html_document
 date: "2023-08-17"
 ---
-摘要：标注raw数据的AOI，适用于双眼采集数据
+摘要：标注raw数据的AOI，适用于单眼采集数据
 
 加载包
 ```{r} 
@@ -20,7 +20,7 @@ aoi_cacu1 <- function(x, a, b) {
   aoi1 <- a %>% filter(area == x)
   
   fixation2 <- b %>%
-    mutate(!!x :=case_when((between(xpl, aoi1$X1, aoi1$X2)&between(ypl, aoi1$Y1, aoi1$Y3))|(between(xpr, aoi1$X1, aoi1$X2)&between(ypr, aoi1$Y1, aoi1$Y3))~1,
+    mutate(!!x :=case_when((between(xp, aoi1$X1, aoi1$X2)&between(yp, aoi1$Y1, aoi1$Y3))~1,
                             .default = 0))
 }
 
