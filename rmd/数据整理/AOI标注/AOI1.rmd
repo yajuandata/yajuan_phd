@@ -14,7 +14,7 @@ library(furrr)
 ```
 
 读取AOI信息
-```{r}
+```{r, echo=FALSE, message=FALSE}
 # 定义函数ac1, 在特定pic下与特定area下，根据fix数据坐标信息返回打标判断
 aoi_cacu1 <- function(x, a, b) {
   aoi1 <- a %>% filter(area == x)
@@ -76,7 +76,7 @@ aoi_cacu5 <- function(x) {
 # 设置多线程处理
 plan(multisession, workers = 6)
 # 批量处理数据
-aoi_cacu5("/Users/placenameday/Downloads/fix2_test")
+aoi_cacu5("/Users/placenameday/R study/yajuan_data/out/fix2")
 # 恢复单线程处理
 plan(sequential)
 
