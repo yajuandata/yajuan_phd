@@ -15,9 +15,16 @@ library(data.table)
 
 
 ```{r, echo=FALSE, message=FALSE}
+# 读取fix数据
+dt <- fread("/Users/placenameday/R study/yajuan_data/out/fix2_AOI/A002.fix.csv.aoi.csv")
 
+# 读取loss数据
+loss_info <- fread("/Users/placenameday/R study/yajuan_data/out/loss_rate_all/pic_list.csv")
 
+# 用anti_join,从dt中排除loss中匹配的participants和pic一致的数据
+dt2 <- anti_join(dt, loss_info, by = c("participants", "pic"))
 
+# 
 
 ```
 

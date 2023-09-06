@@ -13,16 +13,55 @@ library(furrr)
 library(data.table)
 ```
 
-
+定义汇总方法
 ```{r, echo=FALSE, message=FALSE}
-# 读取丢失率信息
-dt <- read_csv("/Users/placenameday/R study/yajuan_data/out/loss_rate/A002.raw.csv")
+# 计算单个数据文件的三种丢失率信息
+cacu_loss <- function(dt){
+    # 生成丢失率大于0.2的pic列表,赋值给pic_list
+    pic_list <- dt %>% filter(track_loss_rate_pic > 0.2) %>% select(participants, block, pic)
 
-# 生成丢失率大于0.2的pic列表,赋值给pic_list
-pic_list <- dt %>% filter(track_loss_rate_pic > 0.2) %>% select(block, pic)
+    # 生成丢失率大于0.2的block列表,赋值给block_list
+    block_list <- dt %>% filter(track_loss_rate_block > 0.2) %>% select(participants, block) %>% distinct()
 
-# 生成丢失率大于0.2的block列表,赋值给block_list
-block_list <- dt %>% filter(track_loss_rate_block > 0.2) %>% select(block) %>% distinct()
+    # 生成丢失率大于0.2的participant列表,赋值给participant_list
+    participant_list <- dt %>% filter(track_loss_rate_total > 0.2) %>% select(participants) %>% distinct()
+
+    return(list(pic_list, block_list, participant_list))
+}
+
+# 读取一个目录A，将目录下全部文件的丢失率信息汇总，分别生成3个数据框，保存在A同级的另一目录中，目录名称为"loss_rate_all"
+cacu_loss_all <- function(path){
+    # 读取目录下全部文件
+    file_list <- list.files(path, full.names = TRUE)
+    
+    # 读取全部文件的丢失率信息
+    dt_list <- file_list %>% map(read_csv) %>% map(cacu_loss)
+    
+    # 生成丢失率大于0.2的pic列表,赋值给pic_list
+    pic_list <- dt_list %>% map(function(x) x[[1]]) %>% reduce(bind_rows)
+    
+    # 生成丢失率大于0.2的block列表,赋值给block_list
+    block_list <- dt_list %>% map(function(x) x[[2]]) %>% reduce(bind_rows)
+    
+    # 生成丢失率大于0.2的participant列表,赋值给participant_list
+    participant_list <- dt_list %>% map(function(x) x[[3]]) %>% reduce(bind_rows)
+    
+    dir_loss <- paste0(dirname(path), "/", "loss_rate_all")
+    dir.create(dir_loss)
+
+    write_csv(pic_list, paste0(dir_loss, "/", "pic_list.csv"))
+    write_csv(block_list, paste0(dir_loss, "/", "block_list.csv"))
+    write_csv(participant_list, paste0(dir_loss, "/", "participant_list.csv"))
+}
+```
+
+批量处理
+```{r, echo=FALSE, message=FALSE}
+# 待处理目录信息
+path <- "/Users/placenameday/R study/yajuan_data/out/loss_rate"
+
+# 对path进行批量处理
+cacu_loss_all(path)
 
 ```
 

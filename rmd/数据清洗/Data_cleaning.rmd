@@ -27,7 +27,7 @@ track_loss_rate_bin <- function(dt) {
     track_loss_rate_b <- dt2 %>% group_by(block) %>% summarise(track_loss_rate_block = mean(track_loss))
 
     # 合并两种丢失率,并新增一列dt2的整体丢失率
-    track_loss_rate_t <- track_loss_rate_p %>% left_join(track_loss_rate_b, by = "block") %>% mutate(track_loss_rate_total = mean(dt2$track_loss), participant = dt2$participant[1])
+    track_loss_rate_t <- track_loss_rate_p %>% left_join(track_loss_rate_b, by = "block") %>% mutate(track_loss_rate_total = mean(dt2$track_loss), participants = dt2$participants[1])
 
     # 返回丢失率信息
     return(track_loss_rate_t)
@@ -45,7 +45,7 @@ track_loss_rate_bin_mono <- function(dt) {
     track_loss_rate_b <- dt2 %>% group_by(block) %>% summarise(track_loss_rate_block = mean(track_loss))
 
     # 合并两种丢失率,并新增一列dt2的整体丢失率
-    track_loss_rate_t <- track_loss_rate_p %>% left_join(track_loss_rate_b, by = "block") %>% mutate(track_loss_rate_total = mean(dt2$track_loss), participant = dt2$participant[1])
+    track_loss_rate_t <- track_loss_rate_p %>% left_join(track_loss_rate_b, by = "block") %>% mutate(track_loss_rate_total = mean(dt2$track_loss), participants = dt2$participants[1])
 
     # 返回丢失率信息
     return(track_loss_rate_t)

@@ -1,0 +1,46 @@
+---
+title: "Type"
+output: html_document
+date: "2023-09-06"
+---
+摘要：增加数据的维度信息
+
+加载包
+```{r} 
+library(tidyverse)
+library(readxl)
+library(writexl)
+library(furrr)
+```
+
+定义方法
+```{r, echo=FALSE, message=FALSE}
+# 定义方法，将数据文件与维度信息文件匹配
+type <- function(data, base, target){
+  # 读取baseline维度信息文件，将列名bseline改为pic,将列名"Baseline type"改为type。
+  base_info <- read_xlsx(base) %>% 
+    rename(pic = baseline) %>% 
+    rename(type = `Baseline type`) %>% select(-trail)
+
+  # 读取target维度信息文件，2至5列变形成1列，列名为pic,将列名"weidu"改为type。
+  target_info <- read_xlsx(target) %>% 
+    pivot_longer(cols = c(2:5), names_to = "ta", values_to = "pic") %>% 
+    rename(type = weidu) %>% select(-trail, -ta)
+
+  # 合并baseline和target维度信息文件
+  info <- base_info %>% 
+    full_join(target_info)
+
+  # 读取数据文件
+  dt <- fread(data)
+
+  # 匹配数据文件与info
+  dt2 <- dt %>% 
+    left_join(info, by = "pic")
+}
+
+
+
+
+
+```
