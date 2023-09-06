@@ -3,7 +3,7 @@ title: "数据清洗"
 output: html_document
 date: "2023-09-05"
 ---
-摘要：通过计算眼动采样率的丢失率，对眼动数据进行清洗
+摘要：通过计算眼动采样的丢失率，对眼动数据进行清洗
 
 加载包
 ```{r} 
@@ -27,7 +27,7 @@ track_loss_rate_bin <- function(dt) {
     track_loss_rate_b <- dt2 %>% group_by(block) %>% summarise(track_loss_rate_block = mean(track_loss))
 
     # 合并两种丢失率,并新增一列dt2的整体丢失率
-    track_loss_rate_t <- track_loss_rate_p %>% left_join(track_loss_rate_b, by = "block") %>% mutate(track_loss_rate_total = mean(dt2$track_loss))
+    track_loss_rate_t <- track_loss_rate_p %>% left_join(track_loss_rate_b, by = "block") %>% mutate(track_loss_rate_total = mean(dt2$track_loss), participant = dt2$participant[1])
 
     # 返回丢失率信息
     return(track_loss_rate_t)
@@ -45,7 +45,7 @@ track_loss_rate_bin_mono <- function(dt) {
     track_loss_rate_b <- dt2 %>% group_by(block) %>% summarise(track_loss_rate_block = mean(track_loss))
 
     # 合并两种丢失率,并新增一列dt2的整体丢失率
-    track_loss_rate_t <- track_loss_rate_p %>% left_join(track_loss_rate_b, by = "block") %>% mutate(track_loss_rate_total = mean(dt2$track_loss))
+    track_loss_rate_t <- track_loss_rate_p %>% left_join(track_loss_rate_b, by = "block") %>% mutate(track_loss_rate_total = mean(dt2$track_loss), participant = dt2$participant[1])
 
     # 返回丢失率信息
     return(track_loss_rate_t)
@@ -87,6 +87,3 @@ dir <- "/Users/placenameday/R study/yajuan_data/out/raw2"
 # 批量处理loss信息
 track_loss_rate_dir(dir)
 ```
-
-
-

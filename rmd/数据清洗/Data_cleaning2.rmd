@@ -1,0 +1,30 @@
+---
+title: "数据清洗2"
+output: html_document
+date: "2023-09-05"
+---
+摘要：统计眼动采样丢失率不合格的列表
+
+加载包
+```{r} 
+library(tidyverse)
+library(readxl)
+library(furrr)
+library(data.table)
+```
+
+
+```{r, echo=FALSE, message=FALSE}
+# 读取丢失率信息
+dt <- read_csv("/Users/placenameday/R study/yajuan_data/out/loss_rate/A002.raw.csv")
+
+# 生成丢失率大于0.2的pic列表,赋值给pic_list
+pic_list <- dt %>% filter(track_loss_rate_pic > 0.2) %>% select(block, pic)
+
+# 生成丢失率大于0.2的block列表,赋值给block_list
+block_list <- dt %>% filter(track_loss_rate_block > 0.2) %>% select(block) %>% distinct()
+
+```
+
+
+

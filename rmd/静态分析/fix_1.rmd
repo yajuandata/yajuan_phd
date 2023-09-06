@@ -1,0 +1,25 @@
+---
+title: "fix相关静态分析1"
+output: html_document
+date: "2023-09-06"
+---
+摘要：计算fix相关的静态差异
+
+加载包
+```{r} 
+library(tidyverse)
+library(readxl)
+library(furrr)
+library(data.table)
+```
+
+
+```{r, echo=FALSE, message=FALSE}
+
+
+
+
+```
+
+
+
