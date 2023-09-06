@@ -15,20 +15,22 @@ library(data.table)
 
 定义丢失率函数，适用于raw文件中包含单眼数据与双眼数据的情况
 ```{r, echo=FALSE, message=FALSE}
-# 读取raw数据文件
-dt <- fread("/Users/placenameday/R study/yajuan_data/out/raw/A002.asc.csv")
-
 # 定义丢失率函数，适用于raw文件中包含双眼数据的情况
 track_loss_rate_bin <- function(dt) {
     # 读取dt,新建一列数据“track_loss”,判断xpl,ypl为一组，xpr,ypr为一组，若其中两组中都包含NA，则为丢失数据，标记为1，否则为0
     dt2 <- dt %>% mutate(track_loss = ifelse((is.na(xpl) | is.na(ypl)) & (is.na(xpr) | is.na(ypr)), 1, 0))
     
-    # 计算丢失率，即track_loss列的均值
-    track_loss_rate_block <- dt2 %>% group_by(block) %>% summarise(track_loss_rate_block = mean(track_loss)) %>%
-        mutate(track_loss_rate_all = mean(dt2$track_loss))
-    
+    # 计算每个block下的每个pic的丢失率，即track_loss列的均值
+    track_loss_rate_p <- dt2 %>% group_by(block, pic) %>% summarise(track_loss_rate_pic = mean(track_loss))
+
+    # 计算每个block下的丢失率，即track_loss列的均值
+    track_loss_rate_b <- dt2 %>% group_by(block) %>% summarise(track_loss_rate_block = mean(track_loss))
+
+    # 合并两种丢失率,并新增一列dt2的整体丢失率
+    track_loss_rate_t <- track_loss_rate_p %>% left_join(track_loss_rate_b, by = "block") %>% mutate(track_loss_rate_total = mean(dt2$track_loss))
+
     # 返回丢失率信息
-    return(track_loss_rate_block)
+    return(track_loss_rate_t)
 }
 
 # 定义丢失率函数，适用于raw文件中包含单眼数据的情况
@@ -36,13 +38,54 @@ track_loss_rate_bin_mono <- function(dt) {
     # 读取dt,新建一列数据“track_loss”,判断xp与yp中包含任意NA，则为丢失数据，标记为1，否则为0
     dt2 <- dt %>% mutate(track_loss = ifelse((is.na(xp) | is.na(yp)), 1, 0))
     
-    # 计算丢失率，即track_loss列的均值
-    track_loss_rate_block <- dt2 %>% group_by(block) %>% summarise(track_loss_rate_block = mean(track_loss)) %>%
-        mutate(track_loss_rate_all = mean(dt2$track_loss))
-    
+    # 计算每个block下的每个pic的丢失率，即track_loss列的均值
+    track_loss_rate_p <- dt2 %>% group_by(block, pic) %>% summarise(track_loss_rate_pic = mean(track_loss))
+
+    # 计算每个block下的丢失率，即track_loss列的均值
+    track_loss_rate_b <- dt2 %>% group_by(block) %>% summarise(track_loss_rate_block = mean(track_loss))
+
+    # 合并两种丢失率,并新增一列dt2的整体丢失率
+    track_loss_rate_t <- track_loss_rate_p %>% left_join(track_loss_rate_b, by = "block") %>% mutate(track_loss_rate_total = mean(dt2$track_loss))
+
     # 返回丢失率信息
-    return(track_loss_rate_block)
+    return(track_loss_rate_t)
 }
+
+# 定一个函数，接收一个数据文件dt，判断dt中是否包含名为xpl的列，如果包含则运行双眼丢失函数，如果不包含则运行单眼丢失函数
+track_loss_rate <- function(read, write) {
+    # 读取数据文件
+    dt <- fread(read)
+    if ("xpl" %in% colnames(dt)) {
+        loss <- track_loss_rate_bin(dt)
+    } else {
+        loss <- track_loss_rate_bin_mono(dt)
+    }
+    # 写入数据文件
+    fwrite(loss, write)
+}
+
+# 接收一个目录，对目录下的所有数据文件进行丢失率计算，写入到该目录的同级别目录下（以_loss为后缀的目录名）的同名文件中
+track_loss_rate_dir <- function(dir) {
+    # 读取目录下的所有数据文件
+    files <- list.files(dir, full.names = TRUE)
+
+    # 在dir的上级目录中新建一个目录，目录名为"loss_rate"，用于存放丢失率信息
+    dir_loss <- paste0(dirname(dir), "/", "loss_rate")
+    dir.create(dir_loss)
+
+    # 对目录下的所有数据文件进行丢失率计算，写入到该目录的同级别目录下（以_loss为后缀的目录名）的同名文件中
+    future_map2(files, paste0(dir_loss, "/", basename(files)), track_loss_rate)
+}
+
+```
+
+批量处理
+```{r, echo=FALSE, message=FALSE}
+# 输入目录信息
+dir <- "/Users/placenameday/R study/yajuan_data/out/raw2"
+
+# 批量处理loss信息
+track_loss_rate_dir(dir)
 ```
 
 

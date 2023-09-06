@@ -50,7 +50,7 @@ stim_info2 <- function(path, path2) {
 
   f1 <- function(a, b, c, d) {
     mutate(data, stim = if_else(between(time, a, b), c, NA), pic = if_else(between(time, a, b), d, NA)) %>%
-      drop_na()
+      filter(!is.na(stim), !is.na(pic))
   }
 
   a <- future_pmap(list(nmsg2$Stime, nmsg2$Etime, nmsg2$stim, nmsg2$pic), f1) %>% bind_rows()

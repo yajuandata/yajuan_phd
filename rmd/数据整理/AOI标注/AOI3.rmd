@@ -63,7 +63,7 @@ aoi_cacu3 <- function(x, y) {
   fixation2 <- future_map(piclist, ~aoi_cacu2(.x, aoi_t, data_t)) %>% bind_rows()
 
   # 输出数据
-  fwrite(fixation2, paste0(y, ".aoi.csv"))
+  fwrite(fixation2, paste0(y, ".aoi.csv"), na = "NA")
 }
 
 # 定义函数ac5，接收一个目录A，并在A目录的上级目录新建一个目录B，名称为A的上级+"_AOI"。生成A目录下的文建列表，同时结合A的文件名与B目录，生成B目录下的文件列表。批量处理A目录下的文件，将处理结果输出到B目录下的文件列表。
