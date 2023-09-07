@@ -19,15 +19,21 @@ library(data.table)
 track_loss_rate_bin <- function(dt) {
     # 读取dt,新建一列数据“track_loss”,判断xpl,ypl为一组，xpr,ypr为一组，若其中两组中都包含NA，则为丢失数据，标记为1，否则为0
     dt2 <- dt %>% mutate(track_loss = ifelse((is.na(xpl) | is.na(ypl)) & (is.na(xpr) | is.na(ypr)), 1, 0))
-    
+
     # 计算每个block下的每个pic的丢失率，即track_loss列的均值
-    track_loss_rate_p <- dt2 %>% group_by(block, pic) %>% summarise(track_loss_rate_pic = mean(track_loss))
+    track_loss_rate_p <- dt2 %>%
+        group_by(block, pic) %>%
+        summarise(track_loss_rate_pic = mean(track_loss))
 
     # 计算每个block下的丢失率，即track_loss列的均值
-    track_loss_rate_b <- dt2 %>% group_by(block) %>% summarise(track_loss_rate_block = mean(track_loss))
+    track_loss_rate_b <- dt2 %>%
+        group_by(block) %>%
+        summarise(track_loss_rate_block = mean(track_loss))
 
     # 合并两种丢失率,并新增一列dt2的整体丢失率
-    track_loss_rate_t <- track_loss_rate_p %>% left_join(track_loss_rate_b, by = "block") %>% mutate(track_loss_rate_total = mean(dt2$track_loss), participants = dt2$participants[1])
+    track_loss_rate_t <- track_loss_rate_p %>%
+        left_join(track_loss_rate_b, by = "block") %>%
+        mutate(track_loss_rate_total = mean(dt2$track_loss), participants = dt2$participants[1])
 
     # 返回丢失率信息
     return(track_loss_rate_t)
@@ -37,15 +43,21 @@ track_loss_rate_bin <- function(dt) {
 track_loss_rate_bin_mono <- function(dt) {
     # 读取dt,新建一列数据“track_loss”,判断xp与yp中包含任意NA，则为丢失数据，标记为1，否则为0
     dt2 <- dt %>% mutate(track_loss = ifelse((is.na(xp) | is.na(yp)), 1, 0))
-    
+
     # 计算每个block下的每个pic的丢失率，即track_loss列的均值
-    track_loss_rate_p <- dt2 %>% group_by(block, pic) %>% summarise(track_loss_rate_pic = mean(track_loss))
+    track_loss_rate_p <- dt2 %>%
+        group_by(block, pic) %>%
+        summarise(track_loss_rate_pic = mean(track_loss))
 
     # 计算每个block下的丢失率，即track_loss列的均值
-    track_loss_rate_b <- dt2 %>% group_by(block) %>% summarise(track_loss_rate_block = mean(track_loss))
+    track_loss_rate_b <- dt2 %>%
+        group_by(block) %>%
+        summarise(track_loss_rate_block = mean(track_loss))
 
     # 合并两种丢失率,并新增一列dt2的整体丢失率
-    track_loss_rate_t <- track_loss_rate_p %>% left_join(track_loss_rate_b, by = "block") %>% mutate(track_loss_rate_total = mean(dt2$track_loss), participants = dt2$participants[1])
+    track_loss_rate_t <- track_loss_rate_p %>%
+        left_join(track_loss_rate_b, by = "block") %>%
+        mutate(track_loss_rate_total = mean(dt2$track_loss), participants = dt2$participants[1])
 
     # 返回丢失率信息
     return(track_loss_rate_t)
@@ -76,7 +88,6 @@ track_loss_rate_dir <- function(dir) {
     # 对目录下的所有数据文件进行丢失率计算，写入到该目录的同级别目录下（以_loss为后缀的目录名）的同名文件中
     future_map2(files, paste0(dir_loss, "/", basename(files)), track_loss_rate)
 }
-
 ```
 
 批量处理

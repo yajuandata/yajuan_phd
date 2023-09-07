@@ -65,7 +65,9 @@ read_msg <- function(a, b) {
     select(participants, block, trial, stim, Stime, Etime) %>%
     arrange(Stime)
 
-  am <- full_join(pic1, pic2) %>% full_join(am) %>% arrange(Stime)
+  am <- full_join(pic1, pic2) %>%
+    full_join(am) %>%
+    arrange(Stime)
 
   write_csv(am, b)
 }
