@@ -49,6 +49,7 @@ type <- function(data, out, base, target){
   # 用fwrite保存匹配后的数据文件
   fwrite(dt2, out)
 
+  gc()
 }
 
 # 接收一个目录和两个参数（baseinfo, targetinfo），生成输入文件路径列表，建立一个新目录，新目录名为输入目录名加_type，将输入文件路径列表和新目录名作为参数，调用type方法。
