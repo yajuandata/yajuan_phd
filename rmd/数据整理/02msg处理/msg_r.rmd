@@ -65,11 +65,14 @@ read_msg <- function(a, b) {
     select(participants, block, trial, stim, Stime, Etime) %>%
     arrange(Stime)
 
-  am <- full_join(pic1, pic2) %>% full_join(am)
+  am <- full_join(pic1, pic2) %>% full_join(am) %>% arrange(Stime)
 
   write_csv(am, b)
 }
+```
 
+批量处理
+```{r, message=FALSE}
 # 获取msg文件列表
 file_list <- list.files("/Users/placenameday/R study/yajuan_data/out/msg")
 
