@@ -39,7 +39,7 @@ aoi_cacu3 <- function(x, y) {
   data <- read_csv(x)
   
   # 读取AOI坐标信息，将坐标部分数据转换为数字格式
-  aoi <- read_excel("/Users/placenameday/R study/yajuan_phd/info/area2.xlsx") %>%
+  aoi <- read_excel("info/area2.xlsx") %>%
     mutate_at(vars(3:6), as.numeric)
   
   # 提取数据文件与AOI信息文件中刺激物的交集列表
@@ -72,12 +72,14 @@ aoi_cacu5 <- function(x) {
   future_map2(filelist, filelist2, aoi_cacu3)
   gc()
 }
+```
 
+批量处理数据
+```{r, echo=FALSE, message=FALSE}
 # 设置多线程处理
 plan(multisession, workers = 6)
 # 批量处理数据
-aoi_cacu5("/Users/placenameday/R study/yajuan_data/out/fix2")
+aoi_cacu5("../yajuan_data/out/fix2")
 # 恢复单线程处理
 plan(sequential)
-
 ```

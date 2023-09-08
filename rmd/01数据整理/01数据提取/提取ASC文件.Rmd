@@ -31,26 +31,26 @@ out_asc <- function(a, dir_r, dir_s, dir_f, dir_b, dir_m, dir_in) {
 
 
 # 获取asc文件列表
-file_list <- list.files("/Users/placenameday/R study/yajuan_data/asc")
+file_list <- list.files("../yajuan_data/asc")
 
 # 把asc文件列表变成路径列表
-nlist <- str_c("/Users/placenameday/R study/yajuan_data/asc/", file_list)
+nlist <- str_c("../yajuan_data/asc/", file_list)
 
 # 做输出的路径列表
-raw_list <- str_c("/Users/placenameday/R study/yajuan_data/out/raw/", file_list)
-sacc_list <- str_c("/Users/placenameday/R study/yajuan_data/out/sacc/", file_list)
-fix_list <- str_c("/Users/placenameday/R study/yajuan_data/out/fix/", file_list)
-blinks_list <- str_c("/Users/placenameday/R study/yajuan_data/out/blinks/", file_list)
-msg_list <- str_c("/Users/placenameday/R study/yajuan_data/out/msg/", file_list)
-info_list <- str_c("/Users/placenameday/R study/yajuan_data/out/info/", file_list)
+raw_list <- str_c("../yajuan_data/out/raw/", file_list)
+sacc_list <- str_c("../yajuan_data/out/sacc/", file_list)
+fix_list <- str_c("../yajuan_data/out/fix/", file_list)
+blinks_list <- str_c("../yajuan_data/out/blinks/", file_list)
+msg_list <- str_c("../yajuan_data/out/msg/", file_list)
+info_list <- str_c("../yajuan_data/out/info/", file_list)
 
 # 建立相应文件夹
-dir.create("/Users/placenameday/R study/yajuan_data/out/raw/")
-dir.create("/Users/placenameday/R study/yajuan_data/out/sacc/")
-dir.create("/Users/placenameday/R study/yajuan_data/out/fix/")
-dir.create("/Users/placenameday/R study/yajuan_data/out/blinks/")
-dir.create("/Users/placenameday/R study/yajuan_data/out/msg/")
-dir.create("/Users/placenameday/R study/yajuan_data/out/info/")
+dir.create("../yajuan_data/out/raw/")
+dir.create("../yajuan_data/out/sacc/")
+dir.create("../yajuan_data/out/fix/")
+dir.create("../yajuan_data/out/blinks/")
+dir.create("../yajuan_data/out/msg/")
+dir.create("../yajuan_data/out/info/")
 
 # 运用map函数批量处理数据
 pmap(list(nlist, raw_list, sacc_list, fix_list, blinks_list, msg_list, info_list), out_asc)

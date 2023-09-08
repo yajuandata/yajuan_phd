@@ -17,8 +17,8 @@ library(readxl)
 read_msg <- function(a, b) {
   msg <- read_csv(a) %>% rename(trial = block)
   # 读取刺激信息列表，1为包含重复刺激名称（用于剔除原始msg无关信息），2为重复信息名称更正（用于合并时间信息）
-  msg_info <- read_excel("/Users/placenameday/R study/yajuan_phd/info/message.xlsx") %>% rename(stim = msg)
-  msg_info2 <- read_excel("/Users/placenameday/R study/yajuan_phd/info/message2.xlsx") %>% rename(stim = msg)
+  msg_info <- read_excel("info/message.xlsx") %>% rename(stim = msg)
+  msg_info2 <- read_excel("info/message2.xlsx") %>% rename(stim = msg)
   # 定义函数stim_i，用于简化msg信息。方法为：仅保留匹配字符串的信息，并简化为纯刺激信息。
   stim_i <- function(x) {
     mutate(msg, stim = ifelse(str_ends(msg$text, x), x, NA)) %>%
@@ -76,19 +76,21 @@ read_msg <- function(a, b) {
 批量处理
 ```{r, message=FALSE}
 # 获取msg文件列表
-file_list <- list.files("/Users/placenameday/R study/yajuan_data/out/msg")
+file_list <- list.files("../yajuan_data/out/msg")
 
-# 把msg文件列表变成输ru路径列表
-nlist <- str_c("/Users/placenameday/R study/yajuan_data/out/msg/", file_list)
-nlist2 <- str_c("/Users/placenameday/R study/yajuan_data/out/nmsg/", file_list)
+# 生成输入路径列表
+nlist <- str_c("../yajuan_data/out/msg/", file_list)
+
+# 生成输出路径列表，文件名在msg的基础上将asc替换为msg
+nlist2 <- str_c("../yajuan_data/out/nmsg/", str_replace(file_list, "asc", "msg"))
 
 # 图片刺激物信息
-pic1 <- read_csv("/Users/placenameday/R study/yajuan_phd/info/pic1.csv") %>% pivot_longer(3:16, names_to = "stim", values_to = "pic")
-pic2 <- read_csv("/Users/placenameday/R study/yajuan_phd/info/pic2.csv") %>% pivot_longer(3:13, names_to = "stim", values_to = "pic")
+pic1 <- read_csv("info/pic1.csv") %>% pivot_longer(3:16, names_to = "stim", values_to = "pic")
+pic2 <- read_csv("info/pic2.csv") %>% pivot_longer(3:13, names_to = "stim", values_to = "pic")
 
 
 # 建立输出文件夹
-dir.create("/Users/placenameday/R study/yajuan_data/out/nmsg")
+dir.create("../yajuan_data/out/nmsg")
 
 # 运用map2函数批量处理数据
 map2(nlist, nlist2, read_msg)

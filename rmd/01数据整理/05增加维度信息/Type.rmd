@@ -47,7 +47,7 @@ type <- function(data, out, base, target){
   }
 
   # 用fwrite保存匹配后的数据文件
-  fwrite(dt2, out)
+  fwrite(dt2, out, na = "NA")
 
   gc()
 }
@@ -70,16 +70,16 @@ type_dir <- function(dir, baseinfo, targetinfo){
 批量处理
 ```{r, echo=FALSE, message=FALSE}
 # 定义输入目录，baseline维度信息文件，target维度信息文件
-dir1 <- "/Users/placenameday/R study/yajuan_data/out/fix2_AOI"
-dir2 <- "/Users/placenameday/R study/yajuan_data/out/blinks2"
-dir3 <- "/Users/placenameday/R study/yajuan_data/out/sacc2_AOI"
-dir4 <- "/Users/placenameday/R study/yajuan_data/out/raw2_AOI"
+dir1 <- "../yajuan_data/out/fix2_AOI"
+dir2 <- "../yajuan_data/out/blinks2"
+dir3 <- "../yajuan_data/out/sacc2_AOI"
+dir4 <- "../yajuan_data/out/raw2_AOI"
 
 # 形成目录列表
 dirs <- c(dir1, dir2, dir3, dir4)
 
-baseinfo <- "/Users/placenameday/R study/yajuan_phd/info/baseline_type.xlsx"
-targetinfo <- "/Users/placenameday/R study/yajuan_phd/info/target_type.xlsx"
+baseinfo <- "info/baseline_type.xlsx"
+targetinfo <- "info/target_type.xlsx"
 
 # 调用type_dir方法,批量处理，设置进程数为5
 plan(multisession, workers = 5)

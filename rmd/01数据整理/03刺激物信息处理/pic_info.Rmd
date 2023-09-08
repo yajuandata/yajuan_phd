@@ -1,0 +1,84 @@
+---
+title: "pic_info"
+output: html_document
+date: "2023-06-28"
+---
+
+加载包
+```{r}
+library(tidyverse)
+library(readxl)
+# 多线程数据处理包data.table用于读取加速
+library(data.table)
+# 多线程数据处理包furrr用于函数运行加速
+library(furrr)
+# 设定furrr为并行计算，5线程
+plan(multisession, workers = 5)
+```
+
+
+数据处理方法
+```{r}
+nmsg2_list <- list.files("../yajuan_data/out/nmsg", full.names = T)
+nmsg2 <- read_csv(nmsg2_list)
+
+# 一般眼动数据标记方法
+stim_info <- function(path, path2) {
+  data <- read_csv(path)
+
+  par <- str_sub(path, start = -12L, end = -5L)
+
+  nmsg2 <- nmsg2 %>% filter(participants == par)
+
+  f1 <- function(a, b, c, d) {
+    mutate(data, stim = if_else(between(stime, a, b) & between(etime, a, b), c, NA), pic = if_else(between(stime, a, b) & between(etime, a, b), d, NA)) %>%
+      drop_na()
+  }
+
+  f2 <- function(a, b, c, d) {
+    mutate(data, stim = if_else(between(time, a, b), c, NA), pic = if_else(between(time, a, b), d, NA)) %>%
+      filter(!is.na(stim), !is.na(pic))
+  }
+
+  # 判断data是否有time列,有则用f2,无则用f1
+  if ("time" %in% colnames(data)) {
+    a <- future_pmap(list(nmsg2$Stime, nmsg2$Etime, nmsg2$stim, nmsg2$pic), f2) %>% bind_rows()
+  } else {
+    a <- future_pmap(list(nmsg2$Stime, nmsg2$Etime, nmsg2$stim, nmsg2$pic), f1) %>% bind_rows()
+  }
+  
+  fwrite(a, path2, na = "NA")
+  
+  gc()
+}
+
+pic_dir <- function(dir){
+  # 生成输入文件路径列表
+  files <- list.files(dir, full.names = TRUE)
+  # 建立一个新目录，新目录名为输入目录名加_type
+  new_dir <- paste0(dir, "2")
+  dir.create(new_dir)
+
+  # 提取数据类型信息，即dir的目录名称
+  dt_type <- basename(dir)
+
+  # 生成输出文件名称列表
+  newname <- str_replace(basename(files), "asc", dt_type)
+
+  # 合并新目录与输入文件名列表，形成输出文件路径列表
+  out <- paste0(new_dir, "/", newname)
+
+  # 调用type方法
+  future_map2(files, out, stim_info)
+}
+
+```
+
+批量处理数据
+```{r}
+# 待处理目录
+dir_list <- c("../yajuan_data/out/blinks", "../yajuan_data/out/fix", "../yajuan_data/out/sacc", "../yajuan_data/out/raw")
+
+# 批量处理
+future_map(dir_list, pic_dir)
+```

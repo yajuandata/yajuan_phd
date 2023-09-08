@@ -74,7 +74,7 @@ cacu_loss_all <- function(path) {
 批量处理
 ```{r, echo=FALSE, message=FALSE}
 # 待处理目录信息
-path <- "/Users/placenameday/R study/yajuan_data/out/loss_rate"
+path <- "../yajuan_data/out/loss_rate"
 
 # 对path进行批量处理
 cacu_loss_all(path)

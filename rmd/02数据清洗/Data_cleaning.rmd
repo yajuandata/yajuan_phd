@@ -93,7 +93,7 @@ track_loss_rate_dir <- function(dir) {
 批量处理
 ```{r, echo=FALSE, message=FALSE}
 # 输入目录信息
-dir <- "/Users/placenameday/R study/yajuan_data/out/raw2"
+dir <- "../yajuan_data/out/raw2"
 
 # 批量处理loss信息
 track_loss_rate_dir(dir)
