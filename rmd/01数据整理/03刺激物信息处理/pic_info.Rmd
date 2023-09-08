@@ -13,7 +13,7 @@ library(data.table)
 # 多线程数据处理包furrr用于函数运行加速
 library(furrr)
 # 设定furrr为并行计算，5线程
-plan(multisession, workers = 5)
+plan(multisession, workers = 6)
 ```
 
 
@@ -24,7 +24,7 @@ nmsg2 <- read_csv(nmsg2_list)
 
 # 一般眼动数据标记方法
 stim_info <- function(path, path2) {
-  data <- read_csv(path)
+  data <- fread(path)
 
   par <- str_sub(path, start = -12L, end = -5L)
 

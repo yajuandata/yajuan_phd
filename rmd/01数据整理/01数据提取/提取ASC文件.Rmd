@@ -1,7 +1,11 @@
 加载包
 ```{r}
-library(tidyverse)
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+library(stringr)
 library(eyelinker)
+library(furrr)
+plan(multisession, workers = 6)
 ```
 
 对ASC数据文件解包，分别输出各个眼动数据文件
@@ -19,12 +23,12 @@ out_asc <- function(a, dir_r, dir_s, dir_f, dir_b, dir_m, dir_in) {
   msg <- b$msg %>% mutate(participants = basename(a))
   info <- b$info %>% mutate(participants = basename(a))
 
-  write_csv(raw, paste(dir_r, ".csv", sep = ""))
-  write_csv(sacc, paste(dir_s, ".csv", sep = ""))
-  write_csv(fix, paste(dir_f, ".csv", sep = ""))
-  write_csv(blinks, paste(dir_b, ".csv", sep = ""))
-  write_csv(msg, paste(dir_m, ".csv", sep = ""))
-  write_csv(info, paste(dir_in, ".csv", sep = ""))
+  fwrite(raw, paste(dir_r, ".csv", sep = ""), na = "NA")
+  fwrite(sacc, paste(dir_s, ".csv", sep = ""), na = "NA")
+  fwrite(fix, paste(dir_f, ".csv", sep = ""), na = "NA")
+  fwrite(blinks, paste(dir_b, ".csv", sep = ""), na = "NA")
+  fwrite(msg, paste(dir_m, ".csv", sep = ""), na = "NA")
+  fwrite(info, paste(dir_in, ".csv", sep = ""), na = "NA")
   gc()
 }
 
@@ -53,5 +57,5 @@ dir.create("../yajuan_data/out/msg/")
 dir.create("../yajuan_data/out/info/")
 
 # 运用map函数批量处理数据
-pmap(list(nlist, raw_list, sacc_list, fix_list, blinks_list, msg_list, info_list), out_asc)
+future_pmap(list(nlist, raw_list, sacc_list, fix_list, blinks_list, msg_list, info_list), out_asc)
 ```

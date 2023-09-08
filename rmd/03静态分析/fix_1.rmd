@@ -16,7 +16,7 @@ library(data.table)
 
 ```{r, echo=FALSE, message=FALSE}
 # 读取fix数据
-dt <- fread("../yajuan_data/out/fix2_AOI/A002.fix.csv.aoi.csv")
+dt <- fread("../yajuan_data/out/fix2_AOI_type/A002.fix.csv.aoi.csv")
 
 # 读取loss数据
 loss_info <- fread("../yajuan_data/out/loss_rate_all/pic_list.csv")
@@ -25,8 +25,6 @@ loss_info <- fread("../yajuan_data/out/loss_rate_all/pic_list.csv")
 dt2 <- anti_join(dt, loss_info, by = c("participants", "pic"))
 
 
-
-t <- read_excel("info/area1.xlsx")
 ```
 
 
