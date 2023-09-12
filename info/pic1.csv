@@ -1,4 +1,4 @@
-﻿block,trial,baseline,baseline_key,target1,t1_key,target2,t2_key,target3,t3_key,target4,t4_key,blank1,blank1_2,fixation,fixation2
+﻿BLOCK,block,baseline,baseline_key,target1,t1_key,target2,t2_key,target3,t3_key,target4,t4_key,blank1,blank1_2,fixation,fixation2
 1,1,b1-1.jpg,b1-1.jpg,t11-1.jpg,t11-1.jpg,t12-1.jpg,t12-1.jpg,t13-1.jpg,t13-1.jpg,t14-1.jpg,t14-1.jpg,blank1,blank1_2,fixation,fixation2
 1,2,b2-1.jpg,b2-1.jpg,t21-1.jpg,t21-1.jpg,t22-1.jpg,t22-1.jpg,t23-1.jpg,t23-1.jpg,t24-1.jpg,t24-1.jpg,blank1,blank1_2,fixation,fixation2
 1,3,b3-1.jpg,b3-1.jpg,t31-1.jpg,t31-1.jpg,t32-1.jpg,t32-1.jpg,t33-1.jpg,t33-1.jpg,t34-1.jpg,t34-1.jpg,blank1,blank1_2,fixation,fixation2
