@@ -1,0 +1,77 @@
+加载包
+```{r} 
+library(tidyverse)
+library(readxl)
+library(data.table)
+library(furrr)
+library(ggpubr)
+library(rstatix)
+library(datarium)
+```
+
+定义方法
+```{r, echo=FALSE, message=FALSE}
+# 定义方法，将数据文件与维度信息文件匹配
+hanshu <- function(x){
+  fix_info <- read_csv("../yajuan_data/statics/fixation/fixation_01.csv")
+
+  information_info <- read_xlsx("info/information.xlsx")
+  
+  full<- full_join(fix_info,information_info)
+  
+  pha_a <- filter(full,type == x,AOI == "yuduan",get(x) == 1)
+  pha_b <-  filter(full,type == x,AOI == "yuduan",group == "b")
+  pha_b <- pha_b[sample(nrow(pha_b), nrow(pha_a)), ]
+  pha <- full_join(pha_a,pha_b)
+}
+
+canshujihe <- c("pha")
+
+dt <-map(canshujihe, hanshu)
+```
+
+
+```{r}
+
+dt[[1]] %>% group_by(group) %>% get_summary_stats(fixation_duration,type = "mean_sd")
+
+#可视化
+bxp <- ggboxplot(
+dt[[1]], x = "group", y = "fixation_duration", 
+  ylab = "fixation_duration", xlab = "Groups", add = "jitter"
+  )
+bxp
+#极端值
+dt[[1]] %>% group_by(group) %>%
+ identify_outliers(fixation_duration)
+#正态检验
+data(dt[[1]], package = "datarium")
+dt[[1]] %>%
+  group_by(group) %>%
+  shapiro_test(fixation_duration)
+ggqqplot(dt[[1]], x = "fixation_duration", facet.by = "group")
+#方差齐性检验
+dt[[1]] %>% levene_test(fixation_duration ~ group)
+#t检验
+stat.test <- dt[[1]] %>% 
+  t_test(fixation_duration ~ group,var.equal = TRUE) %>%
+  add_significance()
+stat.test
+#效应量计算
+dt[[1]] %>%  cohens_d(fixation_duration ~ group, var.equal = TRUE)
+stat.test <- stat.test %>% add_xy_position(x = "group")
+bxp + 
+  stat_pvalue_manual(stat.test, tip.length = 0) +
+  labs(subtitle = get_test_label(stat.test, detailed = TRUE))
+
+```
+
+```{r}
+view(dt[[1]])
+write.table(dt[[1]],file = "D:/R/yajuan_data/statics/fixation/pha.csv" ,sep = ",",quote = F,row.names = F,col.names = T )
+```
+
+
+
+
+
