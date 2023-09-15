@@ -20,12 +20,12 @@ hanshu <- function(x){
   full<- full_join(fix_info,information_info)
   
   pha_a <- filter(full,type == x,AOI == "yuduan",get(x) == 1)
-  pha_b <-  filter(full,type == x,AOI == "yuduan",group == "b")
+  pha_b <-  filter(full,type == x,AOI == "yuduan",group == "Control group")
   pha_b <- pha_b[sample(nrow(pha_b), nrow(pha_a)), ]
   pha <- full_join(pha_a,pha_b)
 }
 
-canshujihe <- c("pha")
+canshujihe <- c("sch")
 
 dt <-map(canshujihe, hanshu)
 ```
@@ -68,7 +68,7 @@ bxp +
 
 ```{r}
 view(dt[[1]])
-write.table(dt[[1]],file = "D:/R/yajuan_data/statics/fixation/pha.csv" ,sep = ",",quote = F,row.names = F,col.names = T )
+write.table(dt[[1]],file = "D:/R/yajuan_data/statics/fixation/pha.txt" ,sep = ",",quote = F,row.names = F,col.names = T )
 ```
 
 
