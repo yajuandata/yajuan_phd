@@ -1,0 +1,49 @@
+通过实验数据中的msg数据文件，提取被试是实验中对题目的按键反应rt
+
+加载包
+```{r}
+library(data.table)
+library(tidyverse)
+library(furrr)
+plan(multisession(workers = 5))
+```
+
+定义处理方法
+```{r}
+# 定义rt计算方法
+cacau_rt <- function(path) {
+    # 读取msg数据，筛选出按键反应的数据，计算rt
+    dt <- fread(path) %>%
+        filter(!grepl("fixation|blank|key", stim)) %>%
+        mutate(rt = Etime - Stime) %>%
+        select(-block, -Etime, -Stime) %>%
+        rename(block = trial)
+
+    # 返回处理后的数据
+    return(dt)
+}
+
+# 定义批量处理方法，接收一个输入目录路径和一个输出文件路径，使用对目录下所有文件进行处理，合并后输出。
+batch_cacu_keypress <- function(input_dir, output_path) {
+    # 获取目录下所有文件路径
+    files <- list.files(input_dir, full.names = TRUE)
+
+    # 使用furrr包的future_map_dfr方法，对所有文件进行处理，合并后输出
+    future_map_dfr(files, cacau_rt) %>%
+        write_csv(output_path)
+}
+```
+
+进行批量处理
+```{r}
+# 定义输入目录和输出文件路径
+input_dir <- "../yajuan_data/out/nmsg"
+output_path <- "../yajuan_data/out/keypress/key_press_rt.csv"
+
+# 新建目录
+dir.create("../yajuan_data/out/keypress")
+
+# 执行批量处理
+batch_cacu_keypress(input_dir, output_path)
+```
+
