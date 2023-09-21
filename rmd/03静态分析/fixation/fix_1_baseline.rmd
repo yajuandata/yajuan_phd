@@ -43,88 +43,94 @@ fixation_ss <- function(dt_path, loss_path, words_path, baseline_type_path, bloc
   dt_a <- dt_a %>%
     left_join(block_info, by = "block")
 
-  # 根据维度计算fixation_duration和fixation_ps的平均值，每字平均注视次数，合并，删除中间数据
-  dt_a_s <- dt_a %>%
-    group_by(type, baseline_type) %>%
-    reframe(fixation_duration = mean(dur), fixation_ps = mean(aps)) %>%
-    mutate(participants = dt_a$participants[[1]], AOI = "overall")
+  # 判断dt_a是否为空，如果为空则返回空值，不为空则执行后续计算
+  if (nrow(dt_a) == 0) {
+    return(dt_a)
+  } else {
+    # 根据维度计算fixation_duration和fixation_ps的平均值，每字平均注视次数，合并，删除中间数据
+    dt_a_s <- dt_a %>%
+      group_by(type, baseline_type) %>%
+      reframe(fixation_duration = mean(dur), fixation_ps = mean(aps)) %>%
+      mutate(participants = dt_a$participants[[1]], AOI = "overall")
 
-  dt_a_s2 <- dt_a %>%
-    group_by(type, baseline_type, pic) %>%
-    left_join(dt_word, by = "pic") %>%
-    reframe(fixation_count = n(), words = mean(words)) %>%
-    mutate(fixation_per_word = fixation_count / words) %>%
-    select(-words, -fixation_count) %>%
-    group_by(type, baseline_type) %>%
-    reframe(fixation_per_word = mean(fixation_per_word)) %>%
-    mutate(participants = dt_a$participants[[1]], AOI = "overall") %>%
-    left_join(dt_a_s)
+    dt_a_s2 <- dt_a %>%
+      group_by(type, baseline_type, pic) %>%
+      left_join(dt_word, by = "pic") %>%
+      reframe(fixation_count = n(), words = mean(words)) %>%
+      mutate(fixation_per_word = fixation_count / words) %>%
+      select(-words, -fixation_count) %>%
+      group_by(type, baseline_type) %>%
+      reframe(fixation_per_word = mean(fixation_per_word)) %>%
+      mutate(participants = dt_a$participants[[1]], AOI = "overall") %>%
+      left_join(dt_a_s)
 
-  rm(dt_a_s)
+    rm(dt_a_s)
 
-  # 根据刺激类型和AOI对数据进行变形，合并，删除中间数据
-  dt_yes <- dt_a %>%
-    filter(stim %in% c("baseline", "target1", "target1_g")) %>%
-    pivot_longer(12:15, names_to = "AOI", values_to = "hit") %>%
-    filter(hit == 1) %>%
-    select(1:11, type, baseline_type, AOI)
+    # 根据刺激类型和AOI对数据进行变形，合并，删除中间数据
+    dt_yes <- dt_a %>%
+      filter(stim %in% c("baseline", "target1", "target1_g")) %>%
+      pivot_longer(12:15, names_to = "AOI", values_to = "hit") %>%
+      filter(hit == 1) %>%
+      select(1:11, type, baseline_type, AOI)
 
-  dt_17 <- dt_a %>%
-    filter(stim %in% c("target2", "target2_g", "target3", "target3_g", "target4", "target4_g")) %>%
-    pivot_longer(cols = (12:13 | 18:24), names_to = "AOI", values_to = "hit") %>%
-    filter(hit == 1) %>%
-    select(1:11, type, baseline_type, AOI)
+    dt_17 <- dt_a %>%
+      filter(stim %in% c("target2", "target2_g", "target3", "target3_g", "target4", "target4_g")) %>%
+      pivot_longer(cols = (12:13 | 18:24), names_to = "AOI", values_to = "hit") %>%
+      filter(hit == 1) %>%
+      select(1:11, type, baseline_type, AOI)
 
-  dt_fixation <- dt_a %>%
-    filter(stim %in% c("fixation", "fixation2", "fixation_g")) %>%
-    pivot_longer(16:17, names_to = "AOI", values_to = "hit") %>%
-    filter(hit == 1) %>%
-    select(1:11, type, baseline_type, AOI)
+    dt_fixation <- dt_a %>%
+      filter(stim %in% c("fixation", "fixation2", "fixation_g")) %>%
+      pivot_longer(16:17, names_to = "AOI", values_to = "hit") %>%
+      filter(hit == 1) %>%
+      select(1:11, type, baseline_type, AOI)
 
-  dt_aoi <- bind_rows(dt_yes, dt_17, dt_fixation)
+    dt_aoi <- bind_rows(dt_yes, dt_17, dt_fixation)
 
-  rm(dt_yes, dt_17, dt_fixation)
+    rm(dt_yes, dt_17, dt_fixation)
 
-  # 对字数信息进行变形
-  dt_word2 <- dt_word %>%
-    select(-words) %>%
-    pivot_longer(cols = 2:3, names_to = "AOI", values_to = "words") %>%
-    mutate(AOI = str_replace_all(AOI, c("words_yuduan" = "yuduan", "words_question" = "question")))
+    # 对字数信息进行变形
+    dt_word2 <- dt_word %>%
+      select(-words) %>%
+      pivot_longer(cols = 2:3, names_to = "AOI", values_to = "words") %>%
+      mutate(AOI = str_replace_all(AOI, c("words_yuduan" = "yuduan", "words_question" = "question")))
 
-  # 根据AOI计算fixation_duration和fixation_ps的平均值，每字平均注视次数，合并，删除中间数据
-  dt_aoi_s <- dt_aoi %>%
-    group_by(type, baseline_type, AOI) %>%
-    reframe(fixation_duration = mean(dur), fixation_ps = mean(aps)) %>%
-    mutate(participants = dt_a$participants[[1]])
+    # 根据AOI计算fixation_duration和fixation_ps的平均值，每字平均注视次数，合并，删除中间数据
+    dt_aoi_s <- dt_aoi %>%
+      group_by(type, baseline_type, AOI) %>%
+      reframe(fixation_duration = mean(dur), fixation_ps = mean(aps)) %>%
+      mutate(participants = dt_a$participants[[1]])
 
-  dt_aoi_s2 <- dt_aoi %>%
-    group_by(type, baseline_type, pic, AOI) %>%
-    reframe(fixation_count = n()) %>%
-    left_join(dt_word2, by = c("pic", "AOI")) %>%
-    mutate(words = case_when(is.na(words) ~ 1, .default = words)) %>%
-    mutate(fixation_per_word = fixation_count / words) %>%
-    select(-words, -fixation_count) %>%
-    group_by(type, baseline_type, AOI) %>%
-    reframe(fixation_per_word = mean(fixation_per_word)) %>%
-    mutate(participants = dt_a$participants[[1]]) %>%
-    left_join(dt_aoi_s)
+    dt_aoi_s2 <- dt_aoi %>%
+      group_by(type, baseline_type, pic, AOI) %>%
+      reframe(fixation_count = n()) %>%
+      left_join(dt_word2, by = c("pic", "AOI")) %>%
+      mutate(words = case_when(is.na(words) ~ 1, .default = words)) %>%
+      mutate(fixation_per_word = fixation_count / words) %>%
+      select(-words, -fixation_count) %>%
+      group_by(type, baseline_type, AOI) %>%
+      reframe(fixation_per_word = mean(fixation_per_word)) %>%
+      mutate(participants = dt_a$participants[[1]]) %>%
+      left_join(dt_aoi_s)
 
-  rm(dt_aoi_s)
+    rm(dt_aoi_s)
 
-  dt_fixation_summary <- bind_rows(dt_a_s2, dt_aoi_s2)
+    dt_fixation_summary <- bind_rows(dt_a_s2, dt_aoi_s2)
 
-  # 删除其余中间数据
-  rm(dt_word, dt_word2, dt_a, dt_aoi, loss_info, dt_a_s2, dt_aoi_s2, base_line_type, block_info)
+    # 删除其余中间数据
+    rm(dt_word, dt_word2, dt_a, dt_aoi, loss_info, dt_a_s2, dt_aoi_s2, base_line_type, block_info)
 
-  return(dt_fixation_summary)
+    return(dt_fixation_summary)
+  }
 }
-
 # 定义方法，接收一个文件夹目录，一个loss文件路径，一个字数文件路径, 一个基线类型文件路径，一个block信息为难路径，对文件夹下的全部数据文件通过fixation_ss函数进行处理，返回一个合并的数据。
 fixation_ss_all <- function(path, loss_path, words_path, baseline_type_path, block_info_path) {
   # 获取文件夹下的全部文件路径
   file_list <- list.files(path, full.names = TRUE)
 
-  # 对文件夹下的全部数据文件进行处理
+  # 对文件夹下的全部数据文件进行处理，循环报错数据进行跳过处理
+
+
   dt_fixation_summary <- file_list %>%
     future_map_dfr(fixation_ss, loss_path = loss_path, words_path = words_path, baseline_type_path = baseline_type_path, block_info_path = block_info_path)
 
