@@ -1,0 +1,62 @@
+通过实验数据中的results数据文件，提取被试是实验中对题目的按键反应
+
+加载包
+```{r}
+library(data.table)
+library(tidyverse)
+library(furrr)
+plan(multisession(workers = 5))
+```
+
+定义处理方法
+```{r}
+# 定义方法，输入results数据文件路径，输出按键数据
+cacu_keypress <- function(path) {
+    # 读取按键数据文件
+    dt <- fread(path) %>%
+        select(1:2, 4:21) %>%
+        mutate_at(vars(12:20), as.numeric) %>%
+        rename(participants = Session_Name_, block = Trial_Index_) %>%
+        mutate_at(vars(12:16), ~ ifelse(between(block, 46, 71), NA, .))
+
+    # 重塑按键数据
+    dt2 <- dt %>%
+        pivot_longer(cols = c(3:11), names_to = "type", values_to = "pic") %>%
+        pivot_longer(cols = c(3:11), names_to = "key_type", values_to = "key") %>%
+        mutate(key_type = str_replace(key_type, "_value", ""), type = str_replace(type, "target", "t")) %>%
+        filter(type == key_type) %>%
+        select(-key_type) %>%
+        mutate(participants = paste(participants, ".asc", sep = "")) %>%
+        drop_na(key)
+
+    # 去除中间对象
+    rm(dt)
+
+    # 返回数据
+    return(dt2)
+}
+
+# 定义批量处理方法，接收一个输入目录路径和一个输出文件路径，使用对目录下所有文件进行处理，合并后输出。
+batch_cacu_keypress <- function(input_dir, output_path) {
+    # 获取目录下所有文件路径
+    files <- list.files(input_dir, full.names = TRUE)
+
+    # 使用furrr包的future_map_dfr方法，对所有文件进行处理，合并后输出
+    future_map_dfr(files, cacu_keypress) %>%
+        write_csv(output_path)
+}
+```
+
+进行批量处理
+```{r}
+# 定义输入目录和输出文件路径
+input_dir <- "../yajuan_data/question_results"
+output_path <- "../yajuan_data/out/keypress/key_press.csv"
+
+# 新建目录
+dir.create("../yajuan_data/out/keypress")
+
+# 执行批量处理
+batch_cacu_keypress(input_dir, output_path)
+```
+
