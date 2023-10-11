@@ -1,0 +1,59 @@
+---
+title: "Untitled"
+output: html_document
+date: "2023-09-24"
+---
+
+加载包
+```{r} 
+library(tidyverse)
+library(readxl)
+library(data.table)
+library(furrr)
+library(ggpubr)
+library(rstatix)
+library(datarium)
+library(emmeans)
+library(dplyr)
+library(coin)
+
+```
+
+定义方法
+```{r, echo=FALSE, message=FALSE}
+# 筛选pha
+
+  key_info <- read_csv("../yajuan_data/out/keypress/key_press01.csv")
+ pha <- read_xlsx("C:/Users/86180/Desktop/sea.xlsx")
+
+t41 <- filter( key_info,block == "28",type == "t4")
+t42 <- filter( key_info,block == "29",type == "t4")
+t43 <- filter( key_info,block == "30",type == "t4")
+t44 <- filter( key_info,block == "31",type == "t4")
+ta <- bind_rows(t41,t42,t43,t44)
+a <- left_join(pha,ta)
+
+```
+
+非参数检验
+
+```{r}
+a %>% sample_n_by(group, size = 2)
+a %>% group_by(group) %>% get_summary_stats(key, type = "median_iqr")
+#可视化
+
+bxp <- ggboxplot(a, x = "group", y = "key", ylab = "Key", xlab = "Groups", add = "jitter")
+bxp
+#计算
+
+stat.test <- a %>% rstatix::wilcox_test(key ~ group) %>% add_significance()
+stat.test
+#效果大小
+
+a %>% wilcox_effsize(key ~ group)
+#报告
+stat.test <- stat.test %>% add_xy_position(x = "group")
+bxp +  stat_pvalue_manual(stat.test, tip.length = 0) + labs(subtitle = get_test_label(stat.test, detailed = TRUE))
+
+```
+
