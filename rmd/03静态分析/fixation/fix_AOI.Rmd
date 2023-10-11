@@ -22,75 +22,82 @@ library(reshape)
 ```{r, echo=FALSE, message=FALSE}
 # 筛选phn
 
-  fix_info <- read_csv("../yajuan_data/statics/fixation/fixation_01.csv")
-   ph <- read_xlsx("C:/Users/86180/Desktop/pha.xlsx")
-   ph1<- left_join(ph,fix_info)
-  AOI1 <- filter(ph1,type == "pha",AOI == "yuduan")
-  AOI2 <- filter(ph1,type == "pha",AOI == "question")
-  AOI3 <- filter(ph1,type == "pha",AOI == "yes")
-  AOI4 <- filter(ph1,type == "pha",AOI == "no")
- A <-bind_rows(AOI1,AOI2,AOI3,AOI4)
- A<-A[,!(names(A) %in% "type")] %>% rename(c("AOI"="type"))
- 
- 
+fix_info <- read_csv("../yajuan_data/statics/fixation/fixation_01.csv")
+ph <- read_xlsx("C:/Users/86180/Desktop/pha.xlsx")
+ph1 <- left_join(ph, fix_info)
+AOI1 <- filter(ph1, type == "pha", AOI == "yuduan")
+AOI2 <- filter(ph1, type == "pha", AOI == "question")
+AOI3 <- filter(ph1, type == "pha", AOI == "yes")
+AOI4 <- filter(ph1, type == "pha", AOI == "no")
+A <- bind_rows(AOI1, AOI2, AOI3, AOI4)
+A <- A[, !(names(A) %in% "type")] %>% rename(c("AOI" = "type"))
 ```
 
 
 ```{r}
-#计算均值和标准差
-A %>% group_by(type, group) %>% get_summary_stats(fixation_ps, type = "mean_sd")
+# 计算均值和标准差
+A %>%
+  group_by(type, group) %>%
+  get_summary_stats(fixation_ps, type = "mean_sd")
 
-#可视化
-bxp <- ggboxplot(A,x="type",y="fixation_ps",color="group",palette = "jco")
+# 可视化
+bxp <- ggboxplot(A, x = "type", y = "fixation_ps", color = "group", palette = "jco")
 bxp
 
-#极端值
-A %>% group_by(type,group) %>%
- identify_outliers(fixation_ps)%>% drop()
+# 极端值
+A %>%
+  group_by(type, group) %>%
+  identify_outliers(fixation_ps) %>%
+  drop()
 
-#正态检验
-model<-lm(fixation_ps~ group, data=A)
+# 正态检验
+model <- lm(fixation_ps ~ group, data = A)
 ggqqplot(residuals(model))
 shapiro_test(residuals(model))
-#按照组检查正态性假设
-A %>% group_by(type,group) %>%  shapiro_test(fixation_ps)
+# 按照组检查正态性假设
+A %>%
+  group_by(type, group) %>%
+  shapiro_test(fixation_ps)
 
-#创建QQ图
+# 创建QQ图
 ggqqplot(A, "fixation_ps", ggtheme = theme_bw()) +
   facet_grid(type ~ group)
 
-#方差齐性检验
-A %>% levene_test(fixation_ps~ type*group)
+# 方差齐性检验
+A %>% levene_test(fixation_ps ~ type * group)
 
-#方差分析#交互效应和主效应计算
-res.avo <- A %>% anova_test(fixation_ps~ type*group)
+# 方差分析#交互效应和主效应计算
+res.avo <- A %>% anova_test(fixation_ps ~ type * group)
 res.avo
 
-#计算简单主效应
-model <- lm(fixation_ps~ type*group, data = A)
-A %>% group_by(type) %>% anova_test(fixation_ps~ group, error = model)
-
-#计算成对比较
-pwc <- A %>% 
+# 计算简单主效应
+model <- lm(fixation_ps ~ type * group, data = A)
+A %>%
   group_by(type) %>%
-  emmeans_test(fixation_ps~ group, p.adjust.method = "bonferroni") 
+  anova_test(fixation_ps ~ group, error = model)
+
+# 计算成对比较
+pwc <- A %>%
+  group_by(type) %>%
+  emmeans_test(fixation_ps ~ group, p.adjust.method = "bonferroni")
 pwc
-#非显著的交互作用，计算成对比较
+# 非显著的交互作用，计算成对比较
 res.avo
 A %>%
   pairwise_t_test(
-    fixation_ps~ group, 
+    fixation_ps ~ group,
     p.adjust.method = "bonferroni"
-    )
-model <- lm(fixation_ps~ type * group, data = A)
-A %>% 
+  )
+model <- lm(fixation_ps ~ type * group, data = A)
+A %>%
   emmeans_test(
-    fixation_ps~ group, p.adjust.method = "bonferroni",
-    model = model)
-#报告
+    fixation_ps ~ group,
+    p.adjust.method = "bonferroni",
+    model = model
+  )
+# 报告
 pwc <- pwc %>% add_xy_position(x = "type")
 bxp + stat_pvalue_manual(pwc) + labs(subtitle = get_test_label(res.avo, detailed = TRUE), caption = get_pwc_label(pwc))
-
 ```
 
 

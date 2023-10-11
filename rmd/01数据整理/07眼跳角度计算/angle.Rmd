@@ -11,45 +11,52 @@ library(data.table)
 ```
 
 ```{r}
-#使用calculate_angle函数计算从点（x1,y1）到点(x2,y2)的线段的角度，函数中使用atan2计算反正切值，并将其转换为线段的角度。
- calculate_angle<-function(x1,y1,x2,y2){
-  delta_x<-x2-x1
-  delta_y<-y2-y1
- angle<-atan2(delta_y,delta_x)*(180/pi)
- #如果点(x2,y2)落在点（x1,y1）的第一象限
-   if(delta_x>0 & delta_y<0)
-  angle<-atan2(abs(delta_y),delta_x)*(180/pi)
- #如果点(x2,y2)落在点（x1,y1）的第四象限
-  if(delta_x>0 & delta_y>0)
-  angle<-360-atan2(delta_y,delta_x)*(180/pi)
-  #如果点(x2,y2)落在点（x1,y1）的第二象限
-  if(delta_x<0 & delta_y<0)
-  angle<-180-atan2(abs(delta_y),abs(delta_x))*(180/pi) 
-  #如果点(x2,y2)落在点（x1,y1）的第三象限
-  if(delta_x<0 & delta_y>0)
-  angle<-270-atan2(delta_y,abs(delta_x))*(180/pi) 
-  #如果点(x2,y2)落在点（x1,y1）的y轴且y2>y1
-  if(delta_x==0 & delta_y>0)
-  angle<-270
- #如果点(x2,y2)落在点（x1,y1）的y轴且y2<y1
-  if(delta_x==0 & delta_y<0)
-  angle<-90
- #如果点(x2,y2)落在点（x1,y1）的x轴且x2>x1
-  if(delta_x>0 & delta_y==0)
-  angle<-0
- #如果点(x2,y2)落在点（x1,y1）的x轴且x2<x1
-  if(delta_x<0 & delta_y==0)
-  angle<-180
+# 使用calculate_angle函数计算从点（x1,y1）到点(x2,y2)的线段的角度，函数中使用atan2计算反正切值，并将其转换为线段的角度。
+calculate_angle <- function(x1, y1, x2, y2) {
+  delta_x <- x2 - x1
+  delta_y <- y2 - y1
+  angle <- atan2(delta_y, delta_x) * (180 / pi)
+  # 如果点(x2,y2)落在点（x1,y1）的第一象限
+  if (delta_x > 0 & delta_y < 0) {
+    angle <- atan2(abs(delta_y), delta_x) * (180 / pi)
+  }
+  # 如果点(x2,y2)落在点（x1,y1）的第四象限
+  if (delta_x > 0 & delta_y > 0) {
+    angle <- 360 - atan2(delta_y, delta_x) * (180 / pi)
+  }
+  # 如果点(x2,y2)落在点（x1,y1）的第二象限
+  if (delta_x < 0 & delta_y < 0) {
+    angle <- 180 - atan2(abs(delta_y), abs(delta_x)) * (180 / pi)
+  }
+  # 如果点(x2,y2)落在点（x1,y1）的第三象限
+  if (delta_x < 0 & delta_y > 0) {
+    angle <- 270 - atan2(delta_y, abs(delta_x)) * (180 / pi)
+  }
+  # 如果点(x2,y2)落在点（x1,y1）的y轴且y2>y1
+  if (delta_x == 0 & delta_y > 0) {
+    angle <- 270
+  }
+  # 如果点(x2,y2)落在点（x1,y1）的y轴且y2<y1
+  if (delta_x == 0 & delta_y < 0) {
+    angle <- 90
+  }
+  # 如果点(x2,y2)落在点（x1,y1）的x轴且x2>x1
+  if (delta_x > 0 & delta_y == 0) {
+    angle <- 0
+  }
+  # 如果点(x2,y2)落在点（x1,y1）的x轴且x2<x1
+  if (delta_x < 0 & delta_y == 0) {
+    angle <- 180
+  }
   return(angle)
 }
-#文件路径
- xy<-read.csv("C:/Users/86180/Desktop/xy.csv") 
-#map批量处理
-  results <- pmap(list(xy$x1, xy$y1, xy$x2,xy$y2), calculate_angle)
-#新增一列角度值
-  xy<-mutate(xy,angle=results)
-  print(xy)
-
+# 文件路径
+xy <- read.csv("C:/Users/86180/Desktop/xy.csv")
+# map批量处理
+results <- pmap(list(xy$x1, xy$y1, xy$x2, xy$y2), calculate_angle)
+# 新增一列角度值
+xy <- mutate(xy, angle = results)
+print(xy)
 ```
 
  
