@@ -17,32 +17,34 @@ library(data.table)
 定义方法
 ```{r, echo=FALSE, message=FALSE}
 # 定义方法，将数据文件与维度信息文件匹配
-type <- function(data, out, base, target){
+type <- function(data, out, base, target) {
   # 读取baseline维度信息文件，将列名bseline改为pic,将列名"Baseline type"改为type。
   base_info <- read_xlsx(base) %>%
     rename(pic = baseline) %>%
-    rename(type = `Baseline type`) %>% select(-trail)
+    rename(type = `baseline_type`) %>%
+    select(-block)
 
   # 读取target维度信息文件，2至5列变形成1列，列名为pic,将列名"weidu"改为type。
-  target_info <- read_xlsx(target) %>% 
-    pivot_longer(cols = c(2:5), names_to = "ta", values_to = "pic") %>% 
-    rename(type = weidu) %>% select(-trail, -ta)
+  target_info <- read_xlsx(target) %>%
+    pivot_longer(cols = c(2:5), names_to = "ta", values_to = "pic") %>%
+    rename(type = weidu) %>%
+    select(-block, -ta)
 
   # 合并baseline和target维度信息文件
-  info <- base_info %>% 
+  info <- base_info %>%
     full_join(target_info)
 
   # 读取数据文件
   dt <- fread(data)
 
   # 匹配数据文件与info
-  dt2 <- dt %>% 
+  dt2 <- dt %>%
     left_join(info, by = "pic")
 
   # 判断dt2中是否有名为stime的数据列，有的话对数据根据stime进行升序排序，没有的话对数据根据time进行升序排序
-  if("stime" %in% colnames(dt2)){
+  if ("stime" %in% colnames(dt2)) {
     dt2 <- dt2 %>% arrange(stime)
-  }else{
+  } else {
     dt2 <- dt2 %>% arrange(time)
   }
 
@@ -53,7 +55,7 @@ type <- function(data, out, base, target){
 }
 
 # 接收一个目录和两个参数（baseinfo, targetinfo），生成输入文件路径列表，建立一个新目录，新目录名为输入目录名加_type，将输入文件路径列表和新目录名作为参数，调用type方法。
-type_dir <- function(dir, baseinfo, targetinfo){
+type_dir <- function(dir, baseinfo, targetinfo) {
   # 生成输入文件路径列表
   files <- list.files(dir, full.names = TRUE)
   # 建立一个新目录，新目录名为输入目录名加_type
@@ -62,9 +64,8 @@ type_dir <- function(dir, baseinfo, targetinfo){
   # 合并新目录与输入文件名列表，形成输出文件路径列表
   out <- paste0(new_dir, "/", basename(files))
   # 调用type方法
-  future_map2(files, out, ~type(data=.x, out=.y, base=baseinfo, target=targetinfo))
+  future_map2(files, out, ~ type(data = .x, out = .y, base = baseinfo, target = targetinfo))
 }
-
 ```
 
 批量处理
@@ -74,15 +75,15 @@ dir1 <- "../yajuan_data/out/fix2_AOI"
 dir2 <- "../yajuan_data/out/blinks2"
 dir3 <- "../yajuan_data/out/sacc2_AOI"
 dir4 <- "../yajuan_data/out/raw2_AOI"
+dir5 <- "../yajuan_data/out/sacc2_AOI2"
 
 # 形成目录列表
-dirs <- c(dir1, dir2, dir3, dir4)
+dirs <- c(dir5)
 
 baseinfo <- "info/baseline_type.xlsx"
 targetinfo <- "info/target_type.xlsx"
 
 # 调用type_dir方法,批量处理，设置进程数为5
 plan(multisession, workers = 5)
-future_map(dirs, ~type_dir(dir=.x, baseinfo=baseinfo, targetinfo=targetinfo))
-
+future_map(dirs, ~ type_dir(dir = .x, baseinfo = baseinfo, targetinfo = targetinfo))
 ```
