@@ -94,14 +94,15 @@ saccade_ss <- function(dt_path, loss_path, words_path) {
 }
 
 # 定义方法，接收一个文件夹目录，一个loss文件路径，一个字数文件路径，对文件夹下的全部数据文件通过fixation_ss函数进行处理，返回一个合并的数据。
-saccade_ss_all <- function(path, loss_path, words_path) {
+saccade_ss_all <- function(path, loss_path, words_path, wk = 5) {
   # 读取文件夹下的全部数据文件
   dt_path <- list.files(path, full.names = TRUE)
 
+  plan(multisession, workers = wk)
   # 对全部数据文件进行处理
   dt_saccade_summary <- dt_path %>%
     future_map_dfr(saccade_ss, loss_path = loss_path, words_path = words_path)
-
+  plan(sequential)
   # 返回数据
   return(dt_saccade_summary)
 }

@@ -16,7 +16,9 @@ library(data.table)
 定义计算方法
 ```{r}
 calculate_saccade_angle <- function(input_file_path, output_file_path) {
-  aoi <- readxl::read_excel("info/area2.xlsx")
+  aoi <- readxl::read_excel("info/area2.xlsx") %>%
+    mutate_at(vars(3:6), as.numeric)
+
   dt <- fread(input_file_path) %>%
     mutate(RowNumber = row_number())
 
