@@ -75,7 +75,7 @@ dir1 <- "../yajuan_data/out/fix2_AOI"
 dir2 <- "../yajuan_data/out/blinks2"
 dir3 <- "../yajuan_data/out/sacc2_AOI"
 dir4 <- "../yajuan_data/out/raw2_AOI"
-dir5 <- "../yajuan_data/out/sacc2_AOI2"
+dir5 <- "../yajuan_data/out/sacc2_AOI"
 
 # 形成目录列表
 dirs <- c(dir5)

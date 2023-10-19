@@ -1,0 +1,133 @@
+---
+title: "sacc相关静态分析1"
+output: html_document
+date: "2023-10-19"
+---
+摘要：计算sacc相关的静态差异
+
+加载包
+```{r} 
+library(tidyverse)
+library(readxl)
+library(data.table)
+library(furrr)
+```
+
+定义处理方法
+```{r, echo=FALSE, message=FALSE}
+# 定义方法，对saccade数据进行统计处理
+saccade_ss <- function(dt_path, loss_path, words_path) {
+  # 读取loss数据，字数数据，saccade数据
+  loss_info <- fread(loss_path)
+
+  dt_word <- read_excel(words_path) %>%
+    select(pic, words_yuduan, words_question, words)
+
+  dt_a <- fread(dt_path) %>%
+    anti_join(loss_info, by = c("participants", "pic"))
+
+  dt_a <- dt_a %>%
+    filter(eye == unique(dt_a$eye)[1])
+
+  # 根据维度计算saccade_duration和saccade_ampl的平均值，每字平均注视次数，合并，删除中间数据
+  dt_a_s <- dt_a %>%
+    group_by(type) %>%
+    left_join(dt_word, by = "pic") %>%
+    reframe(saccade_duration = mean(dur), saccade_ampl = mean(ampl), saccade_pv = mean(pv), saccade_ag = mean(angle)) %>%
+    mutate(participants = dt_a$participants[[1]], AOI = "overall")
+
+  dt_a_s2 <- dt_a %>%
+    group_by(type, pic) %>%
+    left_join(dt_word, by = "pic") %>%
+    reframe(saccade_count = n(), regression_count = sum(angle >= 135 & angle <= 225), words = mean(words)) %>%
+    mutate(saccade_per_word = saccade_count / words, regression_per_word = regression_count / words) %>%
+    select(-words, -saccade_count) %>%
+    group_by(type) %>%
+    reframe(saccade_per_word = mean(saccade_per_word), regression_per_word = mean(regression_per_word)) %>%
+    mutate(participants = dt_a$participants[[1]], AOI = "overall") %>%
+    left_join(dt_a_s)
+
+  rm(dt_a_s)
+
+  dt_aoi <- dt_a %>%
+    drop_na(AOI_S, AOI_E) %>%
+    mutate(AOI = ifelse(AOI_S == AOI_E, AOI_S, paste(AOI_S, AOI_E, sep = "_")))
+
+  # 对字数信息进行变形
+  dt_word2 <- dt_word %>%
+    pivot_longer(cols = 2:4, names_to = "AOI", values_to = "words") %>%
+    mutate(AOI = str_replace_all(AOI, c("words_yuduan" = "yuduan", "words_question" = "question", "words" = "BG")))
+
+  dt_word2 <- dt_word2 %>%
+    rename(AOI_E = AOI, words_e = words) %>%
+    full_join(dt_word2, relationship = "many-to-many") %>%
+    mutate(AOI = ifelse(AOI == AOI_E, AOI, paste(AOI, AOI_E, sep = "_")), words = (words + words_e) / 2) %>%
+    select(pic, AOI, words)
+
+  # 根据AOI计算saccade_duration和saccade_ampl的平均值，每字平均注视次数，合并，删除中间数据
+  dt_aoi_s <- dt_aoi %>%
+    group_by(type, AOI) %>%
+    reframe(saccade_duration = mean(dur), saccade_ampl = mean(ampl), saccade_pv = mean(pv), saccade_ag = mean(angle)) %>%
+    mutate(participants = dt_a$participants[[1]])
+
+  dt_aoi_s2 <- dt_aoi %>%
+    group_by(type, pic, AOI) %>%
+    reframe(saccade_count = n(), regression_count = sum(angle >= 135 & angle <= 225)) %>%
+    left_join(dt_word2, by = c("pic", "AOI")) %>%
+    mutate(words = case_when(is.na(words) ~ 1, .default = words)) %>%
+    mutate(saccade_per_word = saccade_count / words, regression_per_word = regression_count / words) %>%
+    select(-words, -saccade_count) %>%
+    group_by(type, AOI) %>%
+    reframe(saccade_per_word = mean(saccade_per_word), regression_per_word = mean(regression_per_word)) %>%
+    mutate(participants = dt_a$participants[[1]]) %>%
+    left_join(dt_aoi_s)
+
+  rm(dt_aoi_s)
+
+  dt_saccade_summary <- bind_rows(dt_a_s2, dt_aoi_s2)
+
+  # 删除其余中间数据
+  rm(dt_word, dt_word2, dt_a, dt_aoi, loss_info, dt_a_s2, dt_aoi_s2)
+
+  # 返回数据
+  return(dt_saccade_summary)
+}
+
+# 定义方法，接收一个文件夹目录，一个loss文件路径，一个字数文件路径，对文件夹下的全部数据文件通过fixation_ss函数进行处理，返回一个合并的数据。
+saccade_ss_all <- function(path, loss_path, words_path) {
+  # 读取文件夹下的全部数据文件
+  dt_path <- list.files(path, full.names = TRUE)
+
+  # 对全部数据文件进行处理
+  dt_saccade_summary <- dt_path %>%
+    future_map_dfr(saccade_ss, loss_path = loss_path, words_path = words_path)
+
+  # 返回数据
+  return(dt_saccade_summary)
+}
+```
+
+批量进行处理
+```{r, echo=FALSE, message=FALSE}
+# 定义文件夹路径，loss文件路径，字数文件路径
+path <- "../yajuan_data/out/sacc2_AOI_type"
+loss_path <- "../yajuan_data/out/loss_rate_all/pic_list.csv"
+words_path <- "info/count1.xlsx"
+
+# 新建一个文件夹，用于存放处理后的数据
+dir.create("../yajuan_data/statics")
+dir.create("../yajuan_data/statics/sacc")
+
+# 定义处理结果的保存路径
+save_path <- "../yajuan_data/statics/sacc/sacc_01.csv"
+
+# 对文件夹下的全部数据文件进行处理
+dt_fixation_summary <- saccade_ss_all(path, loss_path, words_path) %>%
+  arrange(participants, type, AOI)
+
+# 保存处理结果
+fwrite(dt_fixation_summary, save_path, na = "NA")
+```
+
+
+

@@ -30,6 +30,9 @@ fixation_ss <- function(dt_path, loss_path, words_path, baseline_type_path, bloc
     filter(stim == "baseline") %>%
     rename(base_type = type)
 
+  dt_a <- dt_a %>%
+    filter(eye == unique(dt_a$eye)[1])
+
   base_line_type <- read_excel(baseline_type_path) %>%
     select(block, baseline_type)
 

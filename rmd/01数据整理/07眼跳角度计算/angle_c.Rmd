@@ -1,0 +1,64 @@
+---
+title: "sacc_角度计算"
+output: html_document
+date: "2023-10-10"
+---
+计算眼跳两点连线与水平线的夹角。
+
+加载包
+```{r}
+library(tidyverse)
+library(data.table)
+library(furrr)
+```
+
+定义计算方法
+```{r}
+calculate_saccade_angle <- function(input_file_path, output_file_path) {
+  # 读取数据
+  dt <- fread(input_file_path)
+
+  # 定义函数，计算一次眼跳两点的线段的角度，函数中使用atan2计算反正切值，并将其转换为线段的角度。
+  calculate_angle <- function(x1, y1, x2, y2) {
+    delta_x <- x2 - x1
+    delta_y <- y2 - y1
+    angle <- atan2(delta_y, delta_x) * (180 / pi)
+    angle[delta_x > 0 & delta_y < 0] <- atan2(-delta_y[delta_x > 0 & delta_y < 0], delta_x[delta_x > 0 & delta_y < 0]) * (180 / pi)
+    angle[delta_x > 0 & delta_y > 0] <- 360 - atan2(delta_y[delta_x > 0 & delta_y > 0], delta_x[delta_x > 0 & delta_y > 0]) * (180 / pi)
+    angle[delta_x < 0 & delta_y < 0] <- 180 - atan2(abs(delta_y[delta_x < 0 & delta_y < 0]), abs(delta_x[delta_x < 0 & delta_y < 0])) * (180 / pi)
+    angle[delta_x < 0 & delta_y > 0] <- 270 - atan2(delta_y[delta_x < 0 & delta_y > 0], -delta_x[delta_x < 0 & delta_y > 0]) * (180 / pi)
+    angle[delta_x == 0 & delta_y > 0] <- 270
+    angle[delta_x == 0 & delta_y < 0] <- 90
+    angle[delta_x > 0 & delta_y == 0] <- 0
+    angle[delta_x < 0 & delta_y == 0] <- 180
+    return(angle)
+  }
+
+  # 使用dplyr中的mutate函数，计算出每次眼跳的角度，并将其保存在新的一列中。
+  dt <- dt %>% mutate(angle = calculate_angle(sxp, syp, exp, eyp))
+
+  # 将结果保存到输出文件路径中
+  fwrite(dt, output_file_path, na = "NA")
+}
+
+# 对特定目录下的全部文件批量处理，并输出到指定目录下
+batch_calculate_saccade_angle <- function(input_dir, output_dir, wk = 5) {
+  input_file_paths <- list.files(input_dir, full.names = TRUE)
+  output_file_paths <- str_replace(input_file_paths, input_dir, output_dir)
+  plan(multisession, workers = wk)
+  future_map2(input_file_paths, output_file_paths, calculate_saccade_angle)
+  plan(sequential)
+}
+```
+
+调用方法，批量计算
+```{r}
+# 输入目录
+input_dir <- "../yajuan_data/out/sacc2_AOI_type"
+# 输出目录
+output_dir <- "../yajuan_data/out/sacc2_AOI_type"
+# 建立输出目录
+dir.create(output_dir, recursive = TRUE)
+# 调用方法
+batch_calculate_saccade_angle(input_dir, output_dir)
+```

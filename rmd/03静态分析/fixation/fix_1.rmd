@@ -28,6 +28,9 @@ fixation_ss <- function(dt_path, loss_path, words_path) {
     mutate_at(vars(12:24), as.numeric) %>%
     anti_join(loss_info, by = c("participants", "pic"))
 
+  dt_a <- dt_a %>%
+    filter(eye == unique(dt_a$eye)[1])
+
   # 根据维度计算fixation_duration和fixation_ps的平均值，每字平均注视次数，合并，删除中间数据
   dt_a_s <- dt_a %>%
     group_by(type) %>%
