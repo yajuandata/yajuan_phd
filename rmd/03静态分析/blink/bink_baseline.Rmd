@@ -1,9 +1,9 @@
 ---
-title: "blink_baseline相关静态分析1"
+title: "blink相关静态分析1"
 output: html_document
 date: "2023-09-06"
 ---
-摘要：计算blink_baseline相关的静态差异
+摘要：计算blink相关的静态差异
 
 加载包
 ```{r} 
@@ -17,7 +17,7 @@ plan(multisession(workers = 5))
 定义处理方法
 ```{r, echo=FALSE, message=FALSE}
 # 定义方法，对blink数据进行统计处理
-blink_ss <- function(dt_path, loss_path, words_path, baseline_type_path, block_info_path) {
+blink_ss <- function(dt_path, loss_path, words_path,baseline_type_path, block_info_path) {
   # 读取loss数据，字数数据，blink数据
   loss_info <- fread(loss_path)
 
@@ -27,10 +27,8 @@ blink_ss <- function(dt_path, loss_path, words_path, baseline_type_path, block_i
   dt_a <- fread(dt_path) %>%
     anti_join(loss_info, by = c("participants", "pic")) %>%
     filter(stim == "baseline") %>%
-    select(-type)
-
-  # 对双眼数据仅取单眼进行分析
-  dt_a <- dt_a %>%
+    rename(base_type = type)
+   dt_a <- dt_a %>%
     filter(eye == unique(dt_a$eye)[1])
 
   base_line_type <- read_excel(baseline_type_path) %>%
@@ -41,51 +39,80 @@ blink_ss <- function(dt_path, loss_path, words_path, baseline_type_path, block_i
     rename(type = weidu) %>%
     left_join(base_line_type, by = "block") %>%
     drop_na()
-
+ # 合并数据与维度与block关系信息
   dt_a <- dt_a %>%
     left_join(block_info, by = "block")
-  
-   if (nrow(dt_a) == 0) {
+
+  # 判断dt_a是否为空，如果为空则返回空值，不为空则执行后续计算
+  if (nrow(dt_a) == 0) {
     return(dt_a)
   } else {
 
-
   # 根据维度计算blink_duration的平均值，每字平均眨眼次数，合并，删除中间数据
   dt_a_s <- dt_a %>%
-    group_by(type, baseline_type) %>%
+    group_by(type,baseline_type) %>%
     left_join(dt_word, by = "pic") %>%
     reframe(blink_duration = mean(dur)) %>%
     mutate(participants = dt_a$participants[[1]], AOI = "overall")
 
   dt_a_s2 <- dt_a %>%
-    group_by(type, baseline_type, pic) %>%
+    group_by(type,baseline_type,pic) %>%
     left_join(dt_word, by = "pic") %>%
     reframe(blink_count = n(), words = mean(words)) %>%
     mutate(blink_per_word = blink_count / words) %>%
     select(-words, -blink_count) %>%
-    group_by(type, baseline_type) %>%
+    group_by(type,baseline_type) %>%
     reframe(blink_per_word = mean(blink_per_word)) %>%
     mutate(participants = dt_a$participants[[1]], AOI = "overall") %>%
     left_join(dt_a_s) 
- 
-   rm(dt_a_s)
+  rm(dt_a_s)
+# 对字数信息进行变形
+    dt_word2 <- dt_word %>%
+      select(-words) %>%
+      pivot_longer(cols = 2:3, names_to = "AOI", values_to = "words") %>%
+      mutate(AOI = str_replace_all(AOI, c("words_yuduan" = "yuduan", "words_question" = "question")))
 
-  # 返回数据
-  return(dt_a_s2)
- }
+ # 根据AOI计算fixation_duration和fixation_ps的平均值，每字平均注视次数，合并，删除中间数据
+    dt_aoi_s <- dt_aoi %>%
+      group_by(type, baseline_type, AOI) %>%
+      reframe(blink_duration = mean(dur)) %>%
+      mutate(participants = dt_a$participants[[1]])
+
+    dt_aoi_s2 <- dt_aoi %>%
+      group_by(type, baseline_type, pic, AOI) %>%
+      reframe(fixation_count = n()) %>%
+      left_join(dt_word2, by = c("pic", "AOI")) %>%
+      mutate(words = case_when(is.na(words) ~ 1, .default = words)) %>%
+      mutate(blink_per_word = blink_count / words) %>%
+      select(-words, -blink_count) %>%
+      group_by(type, baseline_type, AOI) %>%
+      reframe(blink_per_word = mean(blink_per_word)) %>%
+      mutate(participants = dt_a$participants[[1]]) %>%
+      left_join(dt_aoi_s)
+
+    rm(dt_aoi_s)
+
+    dt_fixation_summary <- bind_rows(dt_a_s2, dt_aoi_s2)
+
+    # 删除其余中间数据
+    rm(dt_word, dt_word2, dt_a, dt_aoi, loss_info, dt_a_s2, dt_aoi_s2, base_line_type, block_info)
+
+    return(dt_fixation_summary)
+  }
 }
 
+
 # 定义方法，接收一个文件夹目录，一个loss文件路径，一个字数文件路径，对文件夹下的全部数据文件通过blink_ss函数进行处理，返回一个合并的数据。
-blink_ss_all <- function(path, loss_path, words_path, baseline_type_path, block_info_path) {
+blink_ss_all <- function(path, loss_path, words_path,baseline_type_path, block_info_path) {
   # 读取文件夹下的全部数据文件
   dt_path <- list.files(path, full.names = TRUE)
 
   # 对全部数据文件进行处理
   dt_blink_summary <- dt_path %>%
-    future_map_dfr(blink_ss, loss_path = loss_path, words_path = words_path, baseline_type_path = baseline_type_path, block_info_path = block_info_path)
+    future_map_dfr(blink_ss, loss_path = loss_path, words_path = words_path,baseline_type_path = baseline_type_path, block_info_path = block_info_path)
 
   # 返回数据
-  return(dt_blink_summary)
+  dt_blink_summary
 }
 ```
 
@@ -95,8 +122,6 @@ blink_ss_all <- function(path, loss_path, words_path, baseline_type_path, block_
 path <- "../yajuan_data/out/blinks2_type"
 loss_path <- "../yajuan_data/out/loss_rate_all/pic_list.csv"
 words_path <- "info/count1.xlsx"
-baseline_type_path <- "info/baseline_type.xlsx"
-block_info_path <- "info/target_type.xlsx"
 
 # 新建一个文件夹，用于存放处理后的数据
 dir.create("../yajuan_data/statics")
@@ -106,9 +131,9 @@ dir.create("../yajuan_data/statics/blink")
 save_path <- "../yajuan_data/statics/blink/blink_01_baseline.csv"
 
 # 对文件夹下的全部数据文件进行处理
-dt_blink_summary <- blink_ss_all(path, loss_path, words_path, baseline_type_path, block_info_path) %>%
-  arrange(participants, type) %>%
-  select(participants, type, baseline_type, blink_duration, blink_per_word)
+dt_blink_summary <- blink_ss_all(path, loss_path, words_path,baseline_type_path, block_info_path) %>%
+  arrange(participants, type,AOI) %>%
+  select(participants, type,AOI, blink_duration, blink_per_word)
 
 # 保存处理结果
 fwrite(dt_blink_summary, save_path, na = "NA")
