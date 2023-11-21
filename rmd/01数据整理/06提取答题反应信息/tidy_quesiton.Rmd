@@ -10,16 +10,16 @@ plan(multisession(workers = 5))
 
 定义处理方法
 ```{r}
-# 定义方法，输入results数据文件路径，输出按键数据
+# 定义函数cacu_keypress，该函数读取指定路径的按键数据文件，并进行处理，最后返回处理后的数据
 cacu_keypress <- function(path) {
-    # 读取按键数据文件
+    # 读取按键数据文件，并选择部分列，然后将12至20列的数据类型转换为数字，最后对部分列进行重命名
     dt <- fread(path) %>%
         select(1:2, 4:21) %>%
         mutate_at(vars(12:20), as.numeric) %>%
         rename(participants = Session_Name_, block = Trial_Index_) %>%
         mutate_at(vars(12:16), ~ ifelse(between(block, 46, 71), NA, .))
 
-    # 重塑按键数据
+    # 对dt进行变形，将3至11列变形成1列，然后对部分列进行处理，最后选择部分列并去除含有NA的行
     dt2 <- dt %>%
         pivot_longer(cols = c(3:11), names_to = "type", values_to = "pic") %>%
         pivot_longer(cols = c(3:11), names_to = "key_type", values_to = "key") %>%
@@ -29,10 +29,10 @@ cacu_keypress <- function(path) {
         mutate(participants = paste(participants, ".asc", sep = "")) %>%
         drop_na(key)
 
-    # 去除中间对象
+    # 删除中间变量dt
     rm(dt)
 
-    # 返回数据
+    # 返回处理后的数据
     return(dt2)
 }
 

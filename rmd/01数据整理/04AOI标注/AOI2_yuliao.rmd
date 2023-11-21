@@ -16,12 +16,15 @@ library(data.table)
 定义计算方法
 ```{r}
 calculate_saccade_angle <- function(input_file_path, output_file_path) {
+  # 从 "info/area3_2.csv" 文件中读取 AOI 数据，并将第3列到第6列的数据类型转换为数值型
   aoi <- read_csv("info/area3_2.csv") %>%
     mutate_at(vars(3:6), as.numeric)
 
-  dt <- fread(input_file_path) %>%
+  # 读取输入文件，并添加行号
+  dt <- fread(input_file_file_path) %>%
     mutate(RowNumber = row_number())
 
+  # 将dt和aoi进行左连接，并计算AOI_S和AOI_E
   result <- dt %>%
     left_join(aoi, by = "pic", relationship = "many-to-many") %>%
     mutate(
@@ -35,23 +38,35 @@ calculate_saccade_angle <- function(input_file_path, output_file_path) {
       )
     )
 
+  # 从结果中选择除了 'AOI_E', 'area', 'X1', 'X2', 'Y1', 'Y3' 这几列之外的所有列，并去除重复行
   r1 <- result %>%
     select(-AOI_E, -area, -X1, -X2, -Y1, -Y3) %>%
     unique()
 
+  # 从结果中选择除了 'AOI_S', 'area', 'X1', 'X2', 'Y1', 'Y3' 这几列之外的所有列，并去除重复行
   r2 <- result %>%
     select(-AOI_S, -area, -X1, -X2, -Y1, -Y3) %>%
     unique()
 
-  # 使用dplyr筛选数据框
+  # 对r1进行分组，分组依据是block, pic, RowNumber
+  # 对每个分组进行汇总
+  # 如果 AOI_S 列全是 NA，那么结果就是 NA
+  # 否则，结果是 AOI_S 列中的第一个非 NA 值
   dt_r1 <- r1 %>%
     group_by(block, pic, RowNumber) %>%
     summarize(AOI_S = ifelse(all(is.na(AOI_S)), NA, first(na.omit(AOI_S))))
 
+  # 对r2进行分组，分组依据是block, pic, RowNumber
+  # 对每个分组进行汇总
+  # 如果 AOI_E 列全是 NA，那么结果就是 NA
+  # 否则，结果是 AOI_E 列中的第一个非 NA 值
   dt_r2 <- r2 %>%
     group_by(block, pic, RowNumber) %>%
     summarize(AOI_E = ifelse(all(is.na(AOI_E)), NA, first(na.omit(AOI_E))))
 
+  # 将 dt_r1 和 dt_r2 进行全连接，然后与 dt 进行左连接
+  # 如果 AOI_S 列的值是 NA，并且 sxp 和 syp 的值在指定的范围内，那么 AOI_S 的值就是 "BG"
+  # 如果 AOI_E 列的值是 NA，并且 exp 和 eyp 的值在指定的范围内，那么 AOI_E 的值就是 "BG"
   new_dt <- full_join(dt_r1, dt_r2) %>%
     left_join(dt) %>%
     mutate(
@@ -59,7 +74,7 @@ calculate_saccade_angle <- function(input_file_path, output_file_path) {
       AOI_E = if_else(is.na(AOI_E) & (between(exp, 0, 1280) & between(eyp, 0, 1024)), "BG", AOI_E)
     )
 
-  # 将new_dt中的AOI列的字符中，所有"_"以及之后的数字删掉
+  # 将new_dt中的AOI_S和AOI_E列的字符中，所有"_"以及之后的数字删掉
   new_dt$AOI_S <- str_remove(new_dt$AOI_S, "_\\d+")
   new_dt$AOI_E <- str_remove(new_dt$AOI_E, "_\\d+")
 

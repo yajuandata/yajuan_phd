@@ -15,14 +15,19 @@ library(furrr)
 定义计算方法
 ```{r}
 calculate_saccade_angle <- function(input_file_path, output_file_path) {
-  # 读取数据
+  # 读取输入文件中的数据
   dt <- fread(input_file_path)
 
-  # 定义函数，计算一次眼跳两点的线段的角度，函数中使用atan2计算反正切值，并将其转换为线段的角度。
+  # 定义函数calculate_angle，该函数计算两点之间的线段的角度
   calculate_angle <- function(x1, y1, x2, y2) {
+    # 计算x和y的差值
     delta_x <- x2 - x1
     delta_y <- y2 - y1
+
+    # 使用atan2函数计算角度，并将其转换为度数
     angle <- atan2(delta_y, delta_x) * (180 / pi)
+
+    # 根据x和y的差值的正负，对角度进行调整
     angle[delta_x > 0 & delta_y < 0] <- atan2(-delta_y[delta_x > 0 & delta_y < 0], delta_x[delta_x > 0 & delta_y < 0]) * (180 / pi)
     angle[delta_x > 0 & delta_y > 0] <- 360 - atan2(delta_y[delta_x > 0 & delta_y > 0], delta_x[delta_x > 0 & delta_y > 0]) * (180 / pi)
     angle[delta_x < 0 & delta_y < 0] <- 180 - atan2(abs(delta_y[delta_x < 0 & delta_y < 0]), abs(delta_x[delta_x < 0 & delta_y < 0])) * (180 / pi)
@@ -31,22 +36,34 @@ calculate_saccade_angle <- function(input_file_path, output_file_path) {
     angle[delta_x == 0 & delta_y < 0] <- 90
     angle[delta_x > 0 & delta_y == 0] <- 0
     angle[delta_x < 0 & delta_y == 0] <- 180
+
+    # 返回计算得到的角度
     return(angle)
   }
 
-  # 使用dplyr中的mutate函数，计算出每次眼跳的角度，并将其保存在新的一列中。
+  # 使用mutate函数，为dt添加一列angle，该列的值由calculate_angle函数计算得到
   dt <- dt %>% mutate(angle = calculate_angle(sxp, syp, exp, eyp))
 
-  # 将结果保存到输出文件路径中
+  # 将处理后的数据保存到输出文件路径中
   fwrite(dt, output_file_path, na = "NA")
 }
 
-# 对特定目录下的全部文件批量处理，并输出到指定目录下
+# 定义函数batch_calculate_saccade_angle，该函数对指定目录下的全部文件进行批量处理，
+# 并将处理结果输出到指定的目录下。该函数接收三个参数：输入文件的目录、输出文件的目录和工作线程的数量。
 batch_calculate_saccade_angle <- function(input_dir, output_dir, wk = 5) {
+  # 获取输入目录下的全部文件的路径
   input_file_paths <- list.files(input_dir, full.names = TRUE)
+
+  # 生成输出文件的路径
   output_file_paths <- str_replace(input_file_paths, input_dir, output_dir)
+
+  # 设置并行计划，使用多个会话进行并行计算
   plan(multisession, workers = wk)
+
+  # 对输入目录下的全部文件进行批量处理，并将处理结果输出到指定的目录下
   future_map2(input_file_paths, output_file_paths, calculate_saccade_angle)
+
+  # 重置并行计划为顺序计划
   plan(sequential)
 }
 ```
