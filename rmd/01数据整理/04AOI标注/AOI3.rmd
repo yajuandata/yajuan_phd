@@ -15,54 +15,62 @@ library(data.table)
 
 读取AOI信息
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
-# 定义函数ac1, 在特定pic下与特定area下，根据fix数据坐标信息返回打标判断
+# 定义函数aoi_cacu1，该函数在特定的pic和area下，根据fix数据的坐标信息返回打标判断
 aoi_cacu1 <- function(x, a, b) {
+  # 从a中筛选出area等于x的行
   aoi1 <- a %>% filter(area == x)
-  
-  # 判断b中是否包含名为xpl的列，如果包含则新建一列“t"，如果不包含则新建一列"d"
+
+  # 判断b中是否包含名为xpl的列
   if (any(names(b) == "xpl")) {
+    # 如果包含xpl列，根据xpl和ypl的值是否在AOI区域内，新建一列（列名由变量x决定），在AOI区域内的值为1，否则为0
     fixation2 <- b %>%
-      mutate(!!x :=case_when((between(xpl, aoi1$X1, aoi1$X2)&between(ypl, aoi1$Y1, aoi1$Y3))|(between(xpr, aoi1$X1, aoi1$X2)&between(ypr, aoi1$Y1, aoi1$Y3))~1,
-                            .default = 0))
+      mutate(!!x := case_when((between(xpl, aoi1$X1, aoi1$X2) & between(ypl, aoi1$Y1, aoi1$Y3)) | (between(xpr, aoi1$X1, aoi1$X2) & between(ypr, aoi1$Y1, aoi1$Y3)) ~ 1,
+        .default = 0
+      ))
   } else {
+    # 如果不包含xpl列，根据xp和yp的值是否在AOI区域内，新建一列（列名由变量x决定），在AOI区域内的值为1，否则为0
     fixation2 <- b %>%
-      mutate(!!x :=case_when((between(xp, aoi1$X1, aoi1$X2)&between(yp, aoi1$Y1, aoi1$Y3))~1,
-                            .default = 0))
+      mutate(!!x := case_when((between(xp, aoi1$X1, aoi1$X2) & between(yp, aoi1$Y1, aoi1$Y3)) ~ 1,
+        .default = 0
+      ))
   }
 
   # 返回打标结果
   fixation2
 }
 
-# 定义函数ac2, 在特定pic下遍历全部area值，并利用ac1进行打标
+# 定义函数aoi_cacu2，该函数在特定pic下遍历全部area值，并利用aoi_cacu1进行打标
 aoi_cacu2 <- function(x, a, f) {
+  # 从a中筛选出pic等于x的行
   ta <- a %>% filter(pic == x)
 
+  # 从f中筛选出pic等于x的行
   tf <- f %>% filter(pic == x)
-  
-  tt2 <- reduce(future_map(ta$area, ~aoi_cacu1(.x, ta, tf)), full_join)
+
+  # 对ta的每个area值，使用aoi_cacu1函数进行打标，然后将结果进行全连接
+  tt2 <- reduce(future_map(ta$area, ~ aoi_cacu1(.x, ta, tf)), full_join)
 }
 
-# 定义函数ac3，将特定目录下的数据文件批量打标并输出，每行增加注释
+# 定义函数aoi_cacu3，该函数将特定目录下的数据文件批量打标并输出
 aoi_cacu3 <- function(x, y) {
   # 读取数据文件
   data <- fread(x)
-  
+
   # 读取AOI坐标信息，将坐标部分数据转换为数字格式
   aoi <- read_excel("info/area2.xlsx") %>%
     mutate_at(vars(3:6), as.numeric)
-  
+
   # 提取数据文件与AOI信息文件中刺激物的交集列表
   piclist <- intersect(unique(data$pic), unique(aoi$pic))
-  
+
   # 根据交集列表剔除数据文件与AOI信息中无法打标的数据
   data_t <- data %>% filter(pic %in% piclist)
   aoi_t <- aoi %>% filter(pic %in% piclist)
-  
-  # 处理当前数据，打标AOI信息
-  fixation2 <- future_map(piclist, ~aoi_cacu2(.x, aoi_t, data_t)) %>% bind_rows()
 
-  # 输出数据
+  # 对每个pic，使用aoi_cacu2函数进行打标，然后将结果合并为一个数据框
+  fixation2 <- future_map(piclist, ~ aoi_cacu2(.x, aoi_t, data_t)) %>% bind_rows()
+
+  # 输出数据到CSV文件
   fwrite(fixation2, paste0(y, ".aoi.csv"), na = "NA")
 }
 
@@ -92,5 +100,4 @@ plan(multisession, workers = 6)
 aoi_cacu5("../yajuan_data/out/raw2")
 # 恢复单线程处理
 plan(sequential)
-
 ```
