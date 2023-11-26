@@ -1,0 +1,392 @@
+---
+title: "AOI_yuliao"
+output: html_document
+date: "2023-11-21"
+---
+摘要：标注fixation数据的语料属性AOI
+
+加载包
+```{r} 
+library(tidyverse)
+library(readxl)
+library(furrr)
+library(data.table)
+```
+
+AOI标注方法
+```{r, echo=FALSE, message=FALSE}
+calculate_fix_AOI2 <- function(input_file_path, output_file_path) {
+    # 读取输入文件
+    aoi1 <- read_csv("info/area2.csv")
+    aoi2 <- read_csv("info/area3_2.csv")
+
+    # 读取输入文件，并添加行号
+    dt <- fread(input_file_path) %>%
+        mutate(RowNumber = row_number()) # 添加行号
+    # 将dt和aoi进行左连接，并计算AOI
+    result1 <- dt %>%
+        right_join(aoi1, by = "pic", relationship = "many-to-many") %>% # 根据"pic"列进行左连接
+        mutate(
+            AOI1 = ifelse(
+                axp >= X1 & ayp >= Y1 & axp <= X2 & ayp <= Y3, # 判断axp和ayp是否在指定的范围内
+                area, # 如果在范围内，AOI的值为"area"
+                NA # 如果不在范围内，AOI的值为NA
+            )
+        ) %>%
+        select(-area, -X1, -X2, -Y1, -Y3) %>% # 选择除area, X1, X2, Y1, Y3之外的所有列
+        unique() # 去除重复的行
+
+    # 对r1进行分组，分组依据是block, pic, RowNumber
+    dt_r1 <- result1 %>%
+        group_by(block, pic, RowNumber) %>%
+        # 对每个分组进行汇总
+        # 如果AOI列全是NA，那么结果就是NA
+        # 否则，结果是AOI列中的第一个非NA值
+        summarize(AOI1 = ifelse(all(is.na(AOI1)), NA, first(na.omit(AOI1))))
+
+    # 将 dt_r1 和 dt 进行左连接
+    new_dt1 <- dt_r1 %>%
+        left_join(dt) %>%
+        # 添加新的 AOI 列
+        # 如果 AOI 列的值是 NA，并且 axp 和 ayp 的值在指定的范围内，那么 AOI 的值就是 "BG"
+        # 否则，AOI 的值就是原来的值
+        mutate(
+            AOI1 = if_else(is.na(AOI1) & (between(axp, 0, 1280) & between(ayp, 0, 1024)), "BG", AOI1)
+        )
+
+
+    # 将dt和aoi进行左连接，并计算AOI
+    result2 <- dt %>%
+        right_join(aoi2, by = "pic", relationship = "many-to-many") %>% # 根据"pic"列进行左连接
+        mutate(
+            AOI2 = ifelse(
+                axp >= X1 & ayp >= Y1 & axp <= X2 & ayp <= Y3, # 判断axp和ayp是否在指定的范围内
+                area, # 如果在范围内，AOI的值为"area"
+                NA # 如果不在范围内，AOI的值为NA
+            )
+        ) %>%
+        select(-area, -X1, -X2, -Y1, -Y3) %>% # 选择除area, X1, X2, Y1, Y3之外的所有列
+        unique() # 去除重复的行
+
+    # 对r2进行分组，分组依据是block, pic, RowNumber
+    dt_r2 <- result2 %>%
+        group_by(block, pic, RowNumber) %>%
+        # 对每个分组进行汇总
+        # 如果AOI列全是NA，那么结果就是NA
+        # 否则，结果是AOI列中的第一个非NA值
+        summarize(AOI2 = ifelse(all(is.na(AOI2)), NA, first(na.omit(AOI2))))
+
+    # 将 dt_r2 和 dt 进行左连接
+    new_dt2 <- dt_r2 %>%
+        left_join(dt) %>%
+        # 添加新的 AOI 列
+        # 如果 AOI 列的值是 NA，并且 axp 和 ayp 的值在指定的范围内，那么 AOI 的值就是 "BG"
+        # 否则，AOI 的值就是原来的值
+        mutate(
+            AOI2 = if_else(is.na(AOI2) & (between(axp, 0, 1280) & between(ayp, 0, 1024)), "BG", AOI2)
+        )
+
+    # 将new_dt1和new_dt2进行全连接
+    rr <- full_join(new_dt1, new_dt2) # 使用full_join函数进行全连接
+
+    # 将rr中的AOI2列的字符中，所有"_"以及之后的数字删掉
+    rr$AOI2 <- str_remove(rr$AOI2, "_\\d+") # 使用str_remove函数删除"_"以及之后的数字
+
+    rr <- drop_na(rr, block)
+
+    # 将结果保存到输出文件路径中
+    fwrite(rr, output_file_path, na = "NA") # 使用fwrite函数将结果保存到output_file_path路径下，将NA值保存为"NA"
+}
+
+# 对特定目录下的全部文件批量处理，并输出到指定目录下
+batch_fix_AOI2 <- function(input_dir, output_dir, wk = 5) {
+    # 获取输入目录下的所有文件路径
+    input_file_paths <- list.files(input_dir, full.names = TRUE)
+    # 将输入文件路径替换为输出文件路径
+    output_file_paths <- str_replace(input_file_paths, input_dir, output_dir)
+    # 设置并行计划，使用多个会话进行并行计算
+    plan(multisession, workers = wk)
+    # 对每对输入文件路径和输出文件路径，使用 calculate_fix_AOI2 函数进行计算
+    future_map2(input_file_paths, output_file_paths, calculate_fix_AOI2)
+    # 设置并行计划为顺序计划，即不进行并行计算
+    plan(sequential)
+}
+
+calculate_saccade_aoi <- function(input_file_path, output_file_path) {
+    # 从 "info/area3_2.csv" 文件中读取 AOI 数据，并将第3列到第6列的数据类型转换为数值型
+    aoi1 <- read_csv("info/area2.csv")
+    aoi2 <- read_csv("info/area3_2.csv")
+
+    # 读取输入文件，并添加行号
+    dt <- fread(input_file_path) %>%
+        mutate(RowNumber = row_number())
+
+    # 将dt和aoi进行左连接，并计算AOI_S和AOI_E
+    result1 <- dt %>%
+        right_join(aoi1, by = "pic", relationship = "many-to-many") %>%
+        mutate(
+            AOI1_S = ifelse(
+                sxp >= X1 & syp >= Y1 & sxp <= X2 & syp <= Y3,
+                area, NA
+            ),
+            AOI1_E = ifelse(
+                exp >= X1 & eyp >= Y1 & exp <= X2 & eyp <= Y3,
+                area, NA
+            )
+        )
+
+    # 从结果中选择除了 'AOI_E', 'area', 'X1', 'X2', 'Y1', 'Y3' 这几列之外的所有列，并去除重复行
+    r1 <- result1 %>%
+        select(-AOI1_E, -area, -X1, -X2, -Y1, -Y3) %>%
+        unique()
+
+    # 从结果中选择除了 'AOI_S', 'area', 'X1', 'X2', 'Y1', 'Y3' 这几列之外的所有列，并去除重复行
+    r2 <- result1 %>%
+        select(-AOI1_S, -area, -X1, -X2, -Y1, -Y3) %>%
+        unique()
+
+    # 对r1进行分组，分组依据是block, pic, RowNumber
+    # 对每个分组进行汇总
+    # 如果 AOI_S 列全是 NA，那么结果就是 NA
+    # 否则，结果是 AOI_S 列中的第一个非 NA 值
+    dt_r1 <- r1 %>%
+        group_by(block, pic, RowNumber) %>%
+        summarize(AOI1_S = ifelse(all(is.na(AOI1_S)), NA, first(na.omit(AOI1_S))))
+
+    # 对r2进行分组，分组依据是block, pic, RowNumber
+    # 对每个分组进行汇总
+    # 如果 AOI_E 列全是 NA，那么结果就是 NA
+    # 否则，结果是 AOI_E 列中的第一个非 NA 值
+    dt_r2 <- r2 %>%
+        group_by(block, pic, RowNumber) %>%
+        summarize(AOI1_E = ifelse(all(is.na(AOI1_E)), NA, first(na.omit(AOI1_E))))
+
+    # 将 dt_r1 和 dt_r2 进行全连接，然后与 dt 进行左连接
+    # 如果 AOI_S 列的值是 NA，并且 sxp 和 syp 的值在指定的范围内，那么 AOI_S 的值就是 "BG"
+    # 如果 AOI_E 列的值是 NA，并且 exp 和 eyp 的值在指定的范围内，那么 AOI_E 的值就是 "BG"
+    new_dt1 <- full_join(dt_r1, dt_r2) %>%
+        left_join(dt) %>%
+        mutate(
+            AOI1_S = if_else(is.na(AOI1_S) & (between(sxp, 0, 1280) & between(syp, 0, 1024)), "BG", AOI1_S),
+            AOI1_E = if_else(is.na(AOI1_E) & (between(exp, 0, 1280) & between(eyp, 0, 1024)), "BG", AOI1_E)
+        )
+
+    # 将dt和aoi进行左连接，并计算AOI_S和AOI_E
+    result2 <- dt %>%
+        right_join(aoi2, by = "pic", relationship = "many-to-many") %>%
+        mutate(
+            AOI2_S = ifelse(
+                sxp >= X1 & syp >= Y1 & sxp <= X2 & syp <= Y3,
+                area, NA
+            ),
+            AOI2_E = ifelse(
+                exp >= X1 & eyp >= Y1 & exp <= X2 & eyp <= Y3,
+                area, NA
+            )
+        )
+
+    # 从结果中选择除了 'AOI_E', 'area', 'X1', 'X2', 'Y1', 'Y3' 这几列之外的所有列，并去除重复行
+    r21 <- result2 %>%
+        select(-AOI2_E, -area, -X1, -X2, -Y1, -Y3) %>%
+        unique()
+
+    # 从结果中选择除了 'AOI_S', 'area', 'X1', 'X2', 'Y1', 'Y3' 这几列之外的所有列，并去除重复行
+    r22 <- result2 %>%
+        select(-AOI2_S, -area, -X1, -X2, -Y1, -Y3) %>%
+        unique()
+
+    # 对r1进行分组，分组依据是block, pic, RowNumber
+    # 对每个分组进行汇总
+    # 如果 AOI_S 列全是 NA，那么结果就是 NA
+    # 否则，结果是 AOI_S 列中的第一个非 NA 值
+    dt_r21 <- r21 %>%
+        group_by(block, pic, RowNumber) %>%
+        summarize(AOI2_S = ifelse(all(is.na(AOI2_S)), NA, first(na.omit(AOI2_S))))
+
+    # 对r2进行分组，分组依据是block, pic, RowNumber
+    # 对每个分组进行汇总
+    # 如果 AOI_E 列全是 NA，那么结果就是 NA
+    # 否则，结果是 AOI_E 列中的第一个非 NA 值
+    dt_r22 <- r22 %>%
+        group_by(block, pic, RowNumber) %>%
+        summarize(AOI2_E = ifelse(all(is.na(AOI2_E)), NA, first(na.omit(AOI2_E))))
+
+    # 将 dt_r1 和 dt_r2 进行全连接，然后与 dt 进行左连接
+    # 如果 AOI_S 列的值是 NA，并且 sxp 和 syp 的值在指定的范围内，那么 AOI_S 的值就是 "BG"
+    # 如果 AOI_E 列的值是 NA，并且 exp 和 eyp 的值在指定的范围内，那么 AOI_E 的值就是 "BG"
+    new_dt2 <- full_join(dt_r21, dt_r22) %>%
+        left_join(dt) %>%
+        mutate(
+            AOI2_S = if_else(is.na(AOI2_S) & (between(sxp, 0, 1280) & between(syp, 0, 1024)), "BG", AOI2_S),
+            AOI2_E = if_else(is.na(AOI2_E) & (between(exp, 0, 1280) & between(eyp, 0, 1024)), "BG", AOI2_E)
+        )
+
+    # 将new_dt中的AOI_S和AOI_E列的字符中，所有"_"以及之后的数字删掉
+    new_dt2$AOI2_S <- str_remove(new_dt2$AOI2_S, "_\\d+")
+    new_dt2$AOI2_E <- str_remove(new_dt2$AOI2_E, "_\\d+")
+
+    rr <- full_join(new_dt1, new_dt2)
+
+    rr <- drop_na(rr, block)
+
+    # 将结果保存到输出文件路径中
+    fwrite(rr, output_file_path, na = "NA")
+}
+
+# 定义函数batch_calculate_saccade_aoi，该函数对指定目录下的全部文件进行批量处理，
+# 并将处理结果输出到指定的目录下。该函数接收三个参数：输入文件的目录、输出文件的目录和工作线程的数量。
+batch_calculate_saccade_aoi <- function(input_dir, output_dir, wk = 5) {
+    # 获取输入目录下的全部文件的路径
+    input_file_paths <- list.files(input_dir, full.names = TRUE)
+
+    # 生成输出文件的路径
+    output_file_paths <- str_replace(input_file_paths, input_dir, output_dir)
+
+    # 设置并行计划，使用多个会话进行并行计算
+    plan(multisession, workers = wk)
+
+    # 对输入目录下的全部文件进行批量处理，并将处理结果输出到指定的目录下
+    future_map2(input_file_paths, output_file_paths, calculate_saccade_aoi)
+
+    # 重置并行计划为顺序计划
+    plan(sequential)
+}
+
+calculate_raw_AOI2 <- function(input_file_path, output_file_path) {
+    # 从 "info/area2.csv" 文件中读取 AOI 数据
+    aoi1 <- fread("info/area2.csv")
+    # 从 "info/area3_2.csv" 文件中读取 AOI 数据
+    aoi2 <- fread("info/area3_2.csv")
+
+    # 读取输入文件，并添加行号
+    dt <- fread(input_file_path) %>%
+        mutate(RowNumber = row_number()) # 为数据框添加行号列
+
+    # 根据dt是否包含"xpl"列，将"x_val"和"y_val"两列的值设置为dt中的"xpl"和"ypl"列的数值，或者"xp"和"yp"列的数值。
+    # 同时，如果dt包含"xpl"列，将"ps_val"列的值设置为"psl"和"psr"列的平均值，否则设置为"ps"列的数值。
+    dt[, c("x_val", "y_val", "ps_val") := .(
+        if ("xpl" %in% names(dt)) get("xpl") else get("xp"),
+        if ("xpl" %in% names(dt)) get("ypl") else get("yp"),
+        if ("xpl" %in% names(dt)) (get("psl") + get("psr")) / 2 else get("ps")
+    )]
+
+    # 将dt和aoi进行左连接，并计算AOI
+    result1 <- dt %>%
+        right_join(aoi1, by = "pic", relationship = "many-to-many") # 根据"pic"列将dt和AOI1进行左连接
+
+    # 将 result1 转换为 data.table 对象
+    result1 <- data.table(result1)
+
+    # 如果 x_val 和 y_val 的值在指定的范围内，那么 AOI1 的值就是 "area"，否则，AOI1 的值就是 NA
+    result1[, AOI1 := ifelse(x_val >= X1 & y_val >= Y1 & x_val <= X2 & y_val <= Y3, area, NA)]
+
+    # 从结果中选择除了 'area', 'X1', 'X2', 'Y1', 'Y3' 这几列之外的所有列，并去除重复行
+    r1 <- result1 %>%
+        select(-area, -X1, -X2, -Y1, -Y3) %>%
+        unique()
+
+    # 对r1进行分组，分组依据是block, pic, RowNumber
+    # 对每个分组进行汇总
+    # 如果 AOI1 列全是 NA，那么结果就是 NA
+    # 否则，结果是 AOI1 列中的第一个非 NA 值
+    r1[, AOI1 := ifelse(all(is.na(AOI1)), NA, AOI1[!is.na(AOI1)][1]), by = .(block, pic, RowNumber)]
+
+    # 如果 AOI1 列的值是 NA，并且 x_val 和 y_val 的值在指定的范围内，那么 AOI1 的值就是 "BG"
+    # 否则，AOI1 的值就是原来的值
+    r1[, AOI1 := ifelse(is.na(AOI1) & x_val >= 0 & x_val <= 1280 & y_val >= 0 & y_val <= 1024, "BG", AOI1)]
+
+    # 删除 x_val 和 y_val 列
+    r1[, c("x_val", "y_val") := NULL]
+
+
+    # 将dt和aoi进行左连接，并计算AOI
+    result2 <- dt %>%
+        right_join(aoi2, by = "pic", relationship = "many-to-many") # 根据"pic"列将dt和AOI2进行左连接
+
+    # 将 result2 转换为 data.table 对象
+    result2 <- data.table(result2)
+
+    # 如果 x_val 和 y_val 的值在指定的范围内，那么 AOI2 的值就是 "area"，否则，AOI2 的值就是 NA
+    result2[, AOI2 := ifelse(x_val >= X1 & y_val >= Y1 & x_val <= X2 & y_val <= Y3, area, NA)]
+
+    # 从结果中选择除了 'area', 'X1', 'X2', 'Y1', 'Y3' 这几列之外的所有列，并去除重复行
+    r2 <- result2 %>%
+        select(-area, -X1, -X2, -Y1, -Y3) %>%
+        unique()
+
+    # 对r2进行分组，分组依据是block, pic, RowNumber
+    # 对每个分组进行汇总
+    # 如果 AOI2 列全是 NA，那么结果就是 NA
+    # 否则，结果是 AOI2 列中的第一个非 NA 值
+    r2[, AOI2 := ifelse(all(is.na(AOI2)), NA, AOI2[!is.na(AOI2)][1]), by = .(block, pic, RowNumber)]
+
+    # 如果 AOI2 列的值是 NA，并且 x_val 和 y_val 的值在指定的范围内，那么 AOI2 的值就是 "BG"
+    # 否则，AOI2 的值就是原来的值
+    r2[, AOI2 := ifelse(is.na(AOI2) & x_val >= 0 & x_val <= 1280 & y_val >= 0 & y_val <= 1024, "BG", AOI2)]
+
+    # 删除 x_val 和 y_val 列
+    r2[, c("x_val", "y_val") := NULL]
+
+    # 使用 := 操作符替换 AOI 列的值
+    # 将 AOI 列的字符中，所有 "_" 以及之后的数字删掉
+    r2[, AOI2 := sub("_\\d+", "", AOI2)]
+
+    # 使用 unique() 函数去除 new_dt 中的重复行
+    r1 <- unique(r1)
+    r2 <- unique(r2)
+
+    # 将 r1 和 r2 进行连接
+    new_dt <- full_join(r1, r2) %>% # 使用 full_join() 函数进行连接
+        full_join(dt)
+
+    new_dt <- drop_na(new_dt, block)
+
+    # 将结果保存到输出文件路径中
+    fwrite(new_dt, output_file_path, na = "NA")
+}
+
+# 对特定目录下的全部文件批量处理，并输出到指定目录下
+batch_raw_AOI2 <- function(input_dir, output_dir, wk = 5) {
+    # 获取输入目录下的所有文件路径
+    input_file_paths <- list.files(input_dir, full.names = TRUE)
+    # 将输入文件路径替换为输出文件路径
+    output_file_paths <- str_replace(input_file_paths, input_dir, output_dir)
+    # 设置并行计划，使用多个会话进行并行计算
+    plan(multisession, workers = wk)
+    # 对每对输入文件路径和输出文件路径，使用 calculate_raw_AOI2 函数进行计算
+    future_map2(input_file_paths, output_file_paths, calculate_raw_AOI2)
+    # 设置并行计划为顺序计划，即不进行并行计算
+    plan(sequential)
+}
+```
+
+调用方法，批量计算
+```{r}
+# 输入目录
+input_dir <- "../yajuan_data/out/fix2"
+# 输出目录
+output_dir <- "../yajuan_data/out/fix2_AOI"
+# 建立输出目录
+dir.create(output_dir, recursive = TRUE)
+# 调用方法
+batch_fix_AOI2(input_dir, output_dir)
+
+
+# 输入目录
+input_dir2 <- "../yajuan_data/out/sacc2"
+# 输出目录
+output_dir2 <- "../yajuan_data/out/sacc2_AOI"
+# 建立输出目录
+dir.create(output_dir2, recursive = TRUE)
+# 调用方法
+batch_calculate_saccade_aoi(input_dir2, output_dir2)
+
+# 输入目录
+input_dir3 <- "../yajuan_data/out/raw2"
+# 输出目录
+output_dir3 <- "../yajuan_data/out/raw2_AOI"
+# 建立输出目录
+dir.create(output_dir3, recursive = TRUE)
+# 调用方法
+batch_raw_AOI2(input_dir3, output_dir3)
+```

@@ -1,0 +1,86 @@
+---
+title: "计算瞳孔变化率1"
+output: html_document
+date: "2023-11-23"
+---
+摘要：根据raw数据生成每人的瞳孔大小基线数值，基线的数据以单眼-左眼为优先参考。
+
+加载包
+```{r} 
+library(tidyverse)
+library(data.table)
+library(furrr)
+```
+
+瞳孔变化率的计算基线计算方法
+```{r} 
+# 定义一个函数，根据输入的数据和列名，计算平均值
+calculate_mean <- function(data, cols) {
+    data %>%
+        filter(AOI1 == "cross") %>%
+        group_by(participants, block, stim) %>%
+        summarise(across(all_of(cols), mean, na.rm = TRUE, .names = "{.col}_b_p")) %>%
+        full_join(
+            data %>%
+                group_by(participants, block, stim) %>%
+                summarise(across(all_of(cols), mean, na.rm = TRUE, .names = "{.col}_b_r")),
+            by = c("participants", "block", "stim")
+        ) %>%
+        arrange(participants, block)
+}
+
+# calculate_baseline接受一个文件路径作为参数，从该文件中读取数据
+# 然后计算粗略和精细的基线瞳孔大小
+calculate_baseline <- function(file_path) {
+    # 从文件中读取数据，并过滤出stim列中值为"fixation", "fixation2", "fixation_g"的行
+    fix <- fread(file_path) %>%
+        filter(stim %in% c("fixation", "fixation2", "fixation_g"))
+
+    # 根据fix中是否存在psl列，选择要计算的列
+    cols <- if ("psl" %in% names(fix)) c("psl", "psr") else "ps"
+
+    # 调用函数计算平均值
+    fix_base <- calculate_mean(fix, cols)
+
+    fix_base$stim_t <- dplyr::case_when(
+        fix_base$stim == "fixation" ~ "baseline",
+        fix_base$stim == "fixation2" ~ "target1",
+        fix_base$stim == "fixation_g" ~ "target1_g",
+        TRUE ~ NA_character_
+    )
+
+    # 将结果返回
+    return(fix_base)
+}
+
+# 对特定目录下的全部文件批量处理，并合并为一个csv文件，并保存到特定路径
+# 该函数接受两个参数，第一个参数为文件所在目录，第二个参数为保存文件的路径
+calculate_baseline_all <- function(dir_path, save_path, wk = 5) {
+    # 设置并行计算的计划
+    plan(multisession, workers = wk)
+
+    # 获取目录下的全部文件路径
+    file_paths <- list.files(dir_path, full.names = TRUE)
+
+    # 对每个文件并行调用calculate_baseline函数，然后将结果合并为一个数据框
+    fix_base_all <- future_map_dfr(file_paths, calculate_baseline)
+
+    # 将结果保存到特定路径
+    write.csv(fix_base_all, save_path, row.names = FALSE)
+
+    # 设置并行计划为顺序计划，即不进行并行计算
+    plan(sequential)
+}
+```
+
+计算瞳孔变化率的计算基线并输出
+```{r}
+# raw数据目录
+dir_path <- "../yajuan_data/out/raw2_AOI"
+
+# 输出路径
+save_path <- "../yajuan_data/out/ps_baseline.csv"
+
+# 调用函数计算基线并输出
+calculate_baseline_all(dir_path, save_path)
+```

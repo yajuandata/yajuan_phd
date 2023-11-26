@@ -51,17 +51,16 @@ type <- function(data, out, base, target) {
   fwrite(dt2, out, na = "NA")
 }
 
-# 接收一个目录和两个参数（baseinfo, targetinfo），生成输入文件路径列表，建立一个新目录，新目录名为输入目录名加_type，将输入文件路径列表和新目录名作为参数，调用type方法。
+
+# 定义函数type_dir，该函数接收一个目录和两个参数（baseinfo, targetinfo），
+# 生成输入文件路径列表，然后对每个文件调用type方法进行处理。
 type_dir <- function(dir, baseinfo, targetinfo) {
   # 生成输入文件路径列表
   files <- list.files(dir, full.names = TRUE)
-  # 建立一个新目录，新目录名为输入目录名加_type
-  new_dir <- paste0(dir, "_type")
-  dir.create(new_dir)
-  # 合并新目录与输入文件名列表，形成输出文件路径列表
-  out <- paste0(new_dir, "/", basename(files))
-  # 调用type方法
-  future_map2(files, out, ~ type(data = .x, out = .y, base = baseinfo, target = targetinfo))
+
+  # 使用future_map2函数，对每个文件调用type方法进行处理
+  # .x和.y分别代表输入和输出文件的路径，base和target分别代表baseinfo和targetinfo
+  future_map2(files, files, ~ type(data = .x, out = .y, base = baseinfo, target = targetinfo))
 }
 ```
 
@@ -72,10 +71,9 @@ dir1 <- "../yajuan_data/out/fix2_AOI" # 定义fix2_AOI数据的输入目录
 dir2 <- "../yajuan_data/out/blinks2" # 定义blinks2数据的输入目录
 dir3 <- "../yajuan_data/out/sacc2_AOI" # 定义sacc2_AOI数据的输入目录
 dir4 <- "../yajuan_data/out/raw2_AOI" # 定义raw2_AOI数据的输入目录
-dir5 <- "../yajuan_data/out/sacc2_AOI" # 定义sacc2_AOI数据的输入目录
 
 # 形成目录列表
-dirs <- c(dir5) # 将dir5添加到目录列表中
+dirs <- c(dir1, dir2, dir3, dir4)
 
 baseinfo <- "info/baseline_type.xlsx" # 定义baseline维度信息文件的路径
 targetinfo <- "info/target_type.xlsx" # 定义target维度信息文件的路径

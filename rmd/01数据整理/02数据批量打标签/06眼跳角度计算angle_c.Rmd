@@ -48,20 +48,18 @@ calculate_saccade_angle <- function(input_file_path, output_file_path) {
   fwrite(dt, output_file_path, na = "NA")
 }
 
+
 # 定义函数batch_calculate_saccade_angle，该函数对指定目录下的全部文件进行批量处理，
-# 并将处理结果输出到指定的目录下。该函数接收三个参数：输入文件的目录、输出文件的目录和工作线程的数量。
-batch_calculate_saccade_angle <- function(input_dir, output_dir, wk = 5) {
+# 并将处理结果输出到指定的目录下。该函数接收两个参数：输入文件的目录和工作线程的数量。
+batch_calculate_saccade_angle <- function(input_dir, wk = 5) {
   # 获取输入目录下的全部文件的路径
   input_file_paths <- list.files(input_dir, full.names = TRUE)
-
-  # 生成输出文件的路径
-  output_file_paths <- str_replace(input_file_paths, input_dir, output_dir)
 
   # 设置并行计划，使用多个会话进行并行计算
   plan(multisession, workers = wk)
 
   # 对输入目录下的全部文件进行批量处理，并将处理结果输出到指定的目录下
-  future_map2(input_file_paths, output_file_paths, calculate_saccade_angle)
+  future_map2(input_file_paths, input_file_paths, calculate_saccade_angle)
 
   # 重置并行计划为顺序计划
   plan(sequential)
@@ -71,11 +69,8 @@ batch_calculate_saccade_angle <- function(input_dir, output_dir, wk = 5) {
 调用方法，批量计算
 ```{r}
 # 输入目录
-input_dir <- "../yajuan_data/out/sacc2_AOI_type"
-# 输出目录
-output_dir <- "../yajuan_data/out/sacc2_AOI_type"
-# 建立输出目录
-dir.create(output_dir, recursive = TRUE)
+input_dir <- "../yajuan_data/out/sacc2_AOI"
+
 # 调用方法
-batch_calculate_saccade_angle(input_dir, output_dir)
+batch_calculate_saccade_angle(input_dir)
 ```

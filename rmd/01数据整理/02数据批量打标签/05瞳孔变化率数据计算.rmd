@@ -1,0 +1,119 @@
+---
+title: "计算瞳孔变化率2"
+output: html_document
+date: "2023-11-23"
+---
+摘要：根据基线数值，对raw和raw数据的瞳孔数据进行变化率计算。
+
+加载包
+```{r} 
+library(tidyverse)
+library(data.table)
+library(furrr)
+```
+
+瞳孔变化率的计算方法
+```{r} 
+calculate_ps_cr <- function(baseline_path, fix_path) {
+    # 读取基线数据
+    baseline <- fread(baseline_path) %>%
+        select(-stim) %>%
+        rename(stim = stim_t)
+
+    # 读取fix数据
+    fix <- fread(fix_path) %>% left_join(baseline)
+
+    # 获取原始列名
+    original_cols <- names(fix)
+
+    unique_values <- unique(fix$eye)
+    if (length(unique_values) == 1) {
+        fix[, `:=`(baseline_r = ps_b_r, baseline_p = ps_b_p)]
+    } else {
+        fix[eye == "R", `:=`(baseline_r = psr_b_r, baseline_p = psr_b_p)]
+        fix[eye == "L", `:=`(baseline_r = psl_b_r, baseline_p = psl_b_p)]
+    }
+    fix[, `:=`(
+        ps_cr_r = round((aps - baseline_r) / baseline_r, 4),
+        ps_cr_p = round((aps - baseline_p) / baseline_p, 4)
+    )]
+
+    # 选择原始列和新的列
+    fix <- fix %>%
+        select(all_of(c(original_cols, "ps_cr_r", "ps_cr_p")), -c(psl_b_p, psr_b_p, ps_b_p, psl_b_r, psr_b_r, ps_b_r))
+
+    # 将结果写回文件
+    fwrite(fix, fix_path, na = "NA")
+}
+
+# 定义函数，用于批量计算瞳孔变化率
+calculate_ps_cr_batch <- function(baseline_path, fix_dir_path) {
+    # 获取所有的fix文件
+    fix_files <- list.files(fix_dir_path, pattern = "fix.csv", full.names = TRUE)
+
+    plan(multisession, workers = 5)
+    # 批量计算瞳孔变化率
+    future_map(fix_files, calculate_ps_cr, baseline_path = baseline_path)
+}
+
+calculate_ps_cr_raw <- function(baseline_path, raw_path) {
+    # 读取基线数据
+    baseline <- fread(baseline_path) %>%
+        select(-stim) %>%
+        rename(stim = stim_t)
+
+    # 读取raw数据
+    raw <- fread(raw_path) %>% left_join(baseline)
+
+    # 获取原始列名
+    original_cols <- names(raw)
+
+    if ("ps" %in% colnames(raw)) {
+        raw[, `:=`(
+            ps_cr_r = round((ps - ps_b_r) / ps_b_r, 4),
+            ps_cr_p = round((ps - ps_b_p) / ps_b_p, 4)
+        )]
+    } else {
+        raw[, `:=`(
+            psr_cr_r = round((psr - psr_b_r) / psr_b_r, 4),
+            psr_cr_p = round((psr - psr_b_p) / psr_b_p, 4)
+        )]
+
+        raw[, `:=`(
+            psl_cr_r = round((psl - psl_b_r) / psl_b_r, 4),
+            psl_cr_p = round((psl - psl_b_p) / psl_b_p, 4)
+        )]
+    }
+
+    # 选择原始列和新的列
+    raw <- raw %>%
+        select(-c(psl_b_p, psr_b_p, ps_b_p, psl_b_r, psr_b_r, ps_b_r))
+
+    # 将结果写回文件
+    fwrite(raw, raw_path, na = "NA")
+}
+
+# 定义函数，用于批量计算瞳孔变化率
+calculate_ps_cr_raw_batch <- function(baseline_path, raw_dir_path) {
+    # 获取所有的raw文件
+    raw_files <- list.files(raw_dir_path, pattern = "raw.csv", full.names = TRUE)
+
+    plan(multisession, workers = 5)
+    # 批量计算瞳孔变化率
+    future_map(raw_files, calculate_ps_cr_raw, baseline_path = baseline_path)
+}
+```
+
+```
+
+批量计算raw数据的瞳孔变化率
+```{r}
+dir_path <- "../yajuan_data/out/fix2_AOI"
+baseline_path <- "../yajuan_data/out/ps_baseline.csv"
+
+calculate_ps_cr_batch(baseline_path, dir_path)
+
+dir_path2 <- "../yajuan_data/out/raw2_AOI"
+
+calculate_ps_cr_raw_batch(baseline_path, dir_path2)
+```

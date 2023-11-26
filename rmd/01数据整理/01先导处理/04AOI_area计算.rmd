@@ -1,0 +1,72 @@
+---
+title: "AOI面积计算"
+output: html_document
+date: "2023-11-22"
+---
+摘要：计算AOI的像素面积,并转换为平方厘米单位
+
+加载包
+```{r} 
+library(tidyverse)
+```
+
+具体算法
+```{r} 
+# 读取AOI信息数据
+aoi1 <- read_csv("info/area2.csv")
+aoi2 <- read_csv("info/area3_2.csv")
+
+pix_area <- 1280 * 1024
+cm_area <- 37.5 * 30
+
+ration <- pix_area / cm_area
+
+# 计算aoi1中各个area的面积，计算方式为面积等于(X2-X1)*(Y3-Y1)
+m1 <- aoi1 %>%
+    mutate(mianji = (X2 - X1) * (Y3 - Y1)) %>%
+    select(-X1, -X2, -Y1, -Y3)
+
+m2 <- aoi2 %>%
+    mutate(mianji = (X2 - X1) * (Y3 - Y1)) %>%
+    select(-X1, -X2, -Y1, -Y3)
+
+# 对m1进行处理
+m1_all_aoi <- m1 %>%
+    group_by(pic) %>%
+    summarize(mianji = sum(mianji)) %>%
+    mutate(area = "all_aoi")
+
+m1 <- bind_rows(m1, m1_all_aoi) %>% arrange(pic)
+
+# 对m2进行处理
+m2_all_aoi <- m2 %>%
+    group_by(pic) %>%
+    summarize(mianji = sum(mianji)) %>%
+    mutate(area = "all_aoi")
+
+m2 <- bind_rows(m2, m2_all_aoi) %>% arrange(pic)
+
+# 对m1进行处理
+m1_bg <- m1 %>%
+    filter(area == "all_aoi") %>%
+    mutate(mianji = pix_area - mianji, area = "BG")
+
+m1 <- bind_rows(m1, m1_bg) %>%
+    arrange(pic) %>%
+    rename(AOI1 = area) %>%
+    mutate(mianji = mianji / ration)
+
+# 对m2进行处理
+m2_bg <- m2 %>%
+    filter(area == "all_aoi") %>%
+    mutate(mianji = pix_area - mianji, area = "BG")
+
+m2 <- bind_rows(m2, m2_bg) %>%
+    arrange(pic) %>%
+    rename(AOI2 = area) %>%
+    mutate(mianji = mianji / ration)
+
+# 输出结果
+write_csv(m1, "info/mianji_1.csv")
+write_csv(m2, "info/mianji_2.csv")
+```
