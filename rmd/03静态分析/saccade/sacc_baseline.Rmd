@@ -11,26 +11,133 @@ library(tidyverse)
 library(readxl)
 library(data.table)
 library(furrr)
-plan(multisession(workers = 5))
 ```
 
 定义处理方法
 ```{r, echo=FALSE, message=FALSE}
 # 定义方法，对saccade数据进行统计处理
-saccade_ss <- function(dt_path, loss_path, words_path, baseline_type_path, block_info_path) {
-  # 读取loss数据，字数数据，saccade数据, 维度与block关系信息
-  loss_info <- fread(loss_path)
-
-  dt_word <- read_excel(words_path) %>%
-    select(pic, words_yuduan, words_question, words)
-
+saccade_ss <- function(dt_path, loss_info, dt_mianji1, base_line_type, block_info) {
+  # 读取saccade数据
   dt_a <- fread(dt_path) %>%
     anti_join(loss_info, by = c("participants", "pic")) %>%
     filter(stim == "baseline") %>%
     select(-type)
 
+  # 如果数据中存在"L"，则选择"L"，否则选择"R"
+  eye_to_select <- ifelse("L" %in% dt_a$eye, "L", "R")
+
+  # 筛选出eye列等于eye_to_select的数据
   dt_a <- dt_a %>%
-    filter(eye == unique(dt_a$eye)[1])
+    filter(eye == eye_to_select)
+
+  dt_a <- dt_a %>%
+    left_join(block_info, by = "block")
+
+  if (nrow(dt_a) == 0) {
+    return(dt_a)
+  } else {
+    # 根据维度计算saccade_duration和saccade_ampl的平均值，每字平均注视次数，合并，删除中间数据
+    dt_a_s <- dt_a %>%
+      drop_na(AOI1_S, AOI1_E) %>%
+      group_by(type, baseline_type) %>%
+      left_join(dt_mianji1, by = "pic") %>%
+      reframe(
+        saccade_duration = mean(dur, na.rm = TRUE),
+        saccade_ampl = mean(ampl, na.rm = TRUE),
+        saccade_pv = mean(pv, na.rm = TRUE),
+        saccade_ag = mean(angle, na.rm = TRUE)
+      ) %>%
+      mutate(participants = dt_a$participants[[1]], AOI1 = "overall")
+
+    dt_a_s2 <- dt_a %>%
+      drop_na(AOI1_S, AOI1_E) %>%
+      group_by(type, baseline_type, pic) %>%
+      left_join(dt_mianji1, by = "pic") %>%
+      reframe(
+        saccade_count = n(),
+        regression_count = sum(angle >= 135 & angle <= 225),
+        mianji = mean(mianji, na.rm = TRUE)
+      ) %>%
+      mutate(
+        saccade_per_mianji = saccade_count / mianji,
+        regression_per_mianji = regression_count / mianji
+      ) %>%
+      select(-mianji, -saccade_count) %>%
+      group_by(type) %>%
+      reframe(
+        saccade_per_mianji = mean(saccade_per_mianji, na.rm = TRUE),
+        regression_per_mianji = mean(regression_per_mianji, na.rm = TRUE)
+      ) %>%
+      mutate(participants = dt_a$participants[[1]], AOI1 = "overall") %>%
+      left_join(dt_a_s)
+
+
+
+    dt_AOI1 <- dt_a %>%
+      drop_na(AOI1_S, AOI1_E) %>%
+      mutate(AOI1 = ifelse(AOI1_S == AOI1_E, AOI1_S, paste(AOI1_S, AOI1_E, sep = "_")))
+
+    # 对字数信息进行变形
+
+    dt_mianji12 <- dt_mianji1 %>%
+      rename(AOI1_E = AOI1, mianji_e = mianji) %>%
+      full_join(dt_mianji1, relationship = "many-to-many") %>%
+      mutate(AOI1 = ifelse(AOI1 == AOI1_E, AOI1, paste(AOI1, AOI1_E, sep = "_")), mianji = (mianji + mianji_e) / 2) %>%
+      select(pic, AOI1, mianji)
+
+    # 根据AOI1计算saccade_duration和saccade_ampl的平均值，每字平均注视次数，合并，删除中间数据
+    dt_AOI1_s <- dt_AOI1 %>%
+      group_by(type, baseline_type, AOI1) %>%
+      reframe(
+        saccade_duration = mean(dur, na.rm = TRUE),
+        saccade_ampl = mean(ampl, na.rm = TRUE),
+        saccade_pv = mean(pv, na.rm = TRUE),
+        saccade_ag = mean(angle, na.rm = TRUE)
+      ) %>%
+      mutate(participants = dt_a$participants[[1]])
+
+    dt_AOI1_s2 <- dt_AOI1 %>%
+      group_by(type, baseline_type, pic, AOI1) %>%
+      reframe(
+        saccade_count = n(),
+        regression_count = sum(angle >= 135 & angle <= 225)
+      ) %>%
+      left_join(dt_mianji12, by = c("pic", "AOI1")) %>%
+      mutate(mianji = case_when(is.na(mianji) ~ 1, .default = mianji)) %>%
+      mutate(
+        saccade_per_mianji = saccade_count / mianji,
+        regression_per_mianji = regression_count / mianji
+      ) %>%
+      select(-mianji, -saccade_count) %>%
+      group_by(type, AOI1) %>%
+      reframe(
+        saccade_per_mianji = mean(saccade_per_mianji, na.rm = TRUE),
+        regression_per_mianji = mean(regression_per_mianji, na.rm = TRUE)
+      ) %>%
+      mutate(participants = dt_a$participants[[1]]) %>%
+      left_join(dt_AOI1_s)
+
+
+
+    dt_saccade_summary <- bind_rows(dt_a_s2, dt_AOI1_s2) %>%
+      rename(AOI = AOI1) %>%
+      mutate(AOI_type = 1) %>%
+      drop_na(type, AOI) %>%
+      select(participants, type, baseline_type, AOI_type, AOI, saccade_duration, saccade_ampl, saccade_pv, saccade_ag, saccade_per_mianji, regression_per_mianji)
+
+
+    return(dt_saccade_summary)
+  }
+}
+
+# 定义方法，接收一个文件夹目录，一个loss文件路径，一个字数文件路径，对文件夹下的全部数据文件通过fixation_ss函数进行处理，返回一个合并的数据。
+saccade_ss_all <- function(path, loss_path, mianji_path1, baseline_type_path, block_info_path, wk = 5) {
+  # 读取文件夹下的全部数据文件
+  dt_path <- list.files(path, full.names = TRUE)
+
+  # 读取loss数据，字数数据，fixation数据
+  loss_info <- fread(loss_path)
+  dt_mianji1 <- read_csv(mianji_path1)
 
   base_line_type <- read_excel(baseline_type_path) %>%
     select(block, baseline_type)
@@ -41,85 +148,10 @@ saccade_ss <- function(dt_path, loss_path, words_path, baseline_type_path, block
     left_join(base_line_type, by = "block") %>%
     drop_na()
 
-  dt_a <- dt_a %>%
-    left_join(block_info, by = "block")
-
-  if (nrow(dt_a) == 0) {
-    return(dt_a)
-  } else {
-    # 根据维度计算saccade_duration和saccade_ampl的平均值，每字平均注视次数，合并，删除中间数据
-    dt_a_s <- dt_a %>%
-      group_by(type, baseline_type) %>%
-      left_join(dt_word, by = "pic") %>%
-      reframe(saccade_duration = mean(dur), saccade_ampl = mean(ampl), saccade_pv = mean(pv), saccade_ag = mean(angle)) %>%
-      mutate(participants = dt_a$participants[[1]], AOI = "overall")
-
-    dt_a_s2 <- dt_a %>%
-      group_by(type, baseline_type, pic) %>%
-      left_join(dt_word, by = "pic") %>%
-      reframe(saccade_count = n(), regression_count = sum(angle >= 135 & angle <= 225), words = mean(words)) %>%
-      mutate(saccade_per_word = saccade_count / words, regression_per_word = regression_count / words) %>%
-      select(-words, -saccade_count) %>%
-      group_by(type) %>%
-      reframe(saccade_per_word = mean(saccade_per_word), regression_per_word = mean(regression_per_word)) %>%
-      mutate(participants = dt_a$participants[[1]], AOI = "overall") %>%
-      left_join(dt_a_s)
-
-    rm(dt_a_s)
-
-    dt_aoi <- dt_a %>%
-      drop_na(AOI_S, AOI_E) %>%
-      mutate(AOI = ifelse(AOI_S == AOI_E, AOI_S, paste(AOI_S, AOI_E, sep = "_")))
-
-    # 对字数信息进行变形
-    dt_word2 <- dt_word %>%
-      pivot_longer(cols = 2:4, names_to = "AOI", values_to = "words") %>%
-      mutate(AOI = str_replace_all(AOI, c("words_yuduan" = "yuduan", "words_question" = "question", "words" = "BG")))
-
-    dt_word2 <- dt_word2 %>%
-      rename(AOI_E = AOI, words_e = words) %>%
-      full_join(dt_word2, relationship = "many-to-many") %>%
-      mutate(AOI = ifelse(AOI == AOI_E, AOI, paste(AOI, AOI_E, sep = "_")), words = (words + words_e) / 2) %>%
-      select(pic, AOI, words)
-
-    # 根据AOI计算saccade_duration和saccade_ampl的平均值，每字平均注视次数，合并，删除中间数据
-    dt_aoi_s <- dt_aoi %>%
-      group_by(type, baseline_type, AOI) %>%
-      reframe(saccade_duration = mean(dur), saccade_ampl = mean(ampl), saccade_pv = mean(pv), saccade_ag = mean(angle)) %>%
-      mutate(participants = dt_a$participants[[1]])
-
-    dt_aoi_s2 <- dt_aoi %>%
-      group_by(type, baseline_type, pic, AOI) %>%
-      reframe(saccade_count = n(), regression_count = sum(angle >= 135 & angle <= 225)) %>%
-      left_join(dt_word2, by = c("pic", "AOI")) %>%
-      mutate(words = case_when(is.na(words) ~ 1, .default = words)) %>%
-      mutate(saccade_per_word = saccade_count / words, regression_per_word = regression_count / words) %>%
-      select(-words, -saccade_count) %>%
-      group_by(type, AOI) %>%
-      reframe(saccade_per_word = mean(saccade_per_word), regression_per_word = mean(regression_per_word)) %>%
-      mutate(participants = dt_a$participants[[1]]) %>%
-      left_join(dt_aoi_s)
-
-    rm(dt_aoi_s)
-
-    dt_saccade_summary <- bind_rows(dt_a_s2, dt_aoi_s2)
-
-    # 删除其余中间数据
-    rm(dt_word, dt_word2, dt_a, dt_aoi, loss_info, dt_a_s2, dt_aoi_s2)
-
-    return(dt_saccade_summary)
-  }
-}
-
-# 定义方法，接收一个文件夹目录，一个loss文件路径，一个字数文件路径，对文件夹下的全部数据文件通过fixation_ss函数进行处理，返回一个合并的数据。
-saccade_ss_all <- function(path, loss_path, words_path, baseline_type_path, block_info_path, wk = 5) {
-  # 读取文件夹下的全部数据文件
-  dt_path <- list.files(path, full.names = TRUE)
-
   plan(multisession, workers = wk)
   # 对全部数据文件进行处理
   dt_saccade_summary <- dt_path %>%
-    future_map_dfr(saccade_ss, loss_path = loss_path, words_path = words_path, baseline_type_path = baseline_type_path, block_info_path = block_info_path)
+    future_map_dfr(saccade_ss, loss_info = loss_info, dt_mianji1 = dt_mianji1, base_line_type = base_line_type, block_info = block_info)
   plan(sequential)
   # 返回数据
   return(dt_saccade_summary)
@@ -130,9 +162,9 @@ saccade_ss_all <- function(path, loss_path, words_path, baseline_type_path, bloc
 ```{r, echo=FALSE, message=FALSE}
 # 定义文件夹路径，loss文件路径，字数文件路径
 # ？？都已修改
-path <- "../yajuan_data/out/sacc2_AOI_type"
+path <- "../yajuan_data/out/sacc2_AOI"
 loss_path <- "../yajuan_data/out/loss_rate_all/pic_list.csv"
-words_path <- "info/count1.xlsx"
+mianji_path1 <- "info/mianji_1.csv"
 baseline_type_path <- "info/baseline_type.xlsx"
 block_info_path <- "info/target_type.xlsx"
 
@@ -144,9 +176,8 @@ dir.create("../yajuan_data/statics/sacc")
 save_path <- "../yajuan_data/statics/sacc/sacc_01_baseline.csv"
 
 # 对文件夹下的全部数据文件进行处理
-dt_saccade_summary <- saccade_ss_all(path, loss_path, words_path, baseline_type_path, block_info_path) %>%
-  arrange(participants, type, AOI) %>%
-  select(participants, type, baseline_type, AOI, saccade_duration, saccade_ampl, saccade_pv, saccade_ag, saccade_per_word, regression_per_word)
+dt_saccade_summary <- saccade_ss_all(path, loss_path, mianji_path1, baseline_type_path, block_info_path) %>%
+  arrange(participants, type, baseline_type, AOI_type, AOI)
 
 # 保存处理结果
 fwrite(dt_saccade_summary, save_path, na = "NA")

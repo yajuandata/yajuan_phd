@@ -16,104 +16,151 @@ library(furrr)
 定义处理方法
 ```{r, echo=FALSE, message=FALSE}
 # 定义方法，对fixation数据进行统计处理
-fixation_ss <- function(dt_path, loss_path, mianji_path) {
-  # 读取loss数据，字数数据，fixation数据
-  loss_info <- fread(loss_path)
-
-  dt_mianji <- read_csv(mianji_path)
-
+fixation_ss <- function(dt_path, loss_info, dt_mianji1, dt_mianji2) {
+  # 读取数据
   dt_a <- fread(dt_path) %>%
     anti_join(loss_info, by = c("participants", "pic"))
 
+  # 如果数据中存在"L"，则选择"L"，否则选择"R"
+  eye_to_select <- ifelse("L" %in% dt_a$eye, "L", "R")
+
+  # 筛选出eye列等于eye_to_select的数据
   dt_a <- dt_a %>%
-    filter(eye == unique(dt_a$eye)[1])
+    filter(eye == eye_to_select)
 
   # 根据维度计算fixation_duration和fixation_ps的平均值，每字平均注视次数，合并，删除中间数据
-  dt_a_s <- dt_a %>%
+  dt_a_s_a <- dt_a %>%
+    filter(!AOI1 %in% c("BG", NA)) %>%
     group_by(type) %>%
-    left_join(dt_mianji, by = "pic") %>%
-    reframe(fixation_duration = mean(dur), fixation_ps = mean(aps)) %>%
-    mutate(participants = dt_a$participants[[1]], AOI = "overall")
+    reframe(
+      fixation_duration = mean(dur, na.rm = TRUE),
+      fixation_ps = mean(aps, na.rm = TRUE),
+      fixation_count = n(),
+      fixation_ps_cr_r = mean(ps_cr_r, na.rm = TRUE),
+      fixation_ps_cr_p = mean(ps_cr_p, na.rm = TRUE)
+    ) %>%
+    mutate(participants = dt_a$participants[[1]], AOI1 = "overall") %>%
+    drop_na(type)
 
-  dt_a_s2 <- dt_a %>%
+  dt_a_s2_a <- dt_a %>%
+    filter(!AOI1 %in% c("BG", NA)) %>%
     group_by(type, pic) %>%
-    left_join(dt_mianji, by = "pic") %>%
-    reframe(fixation_count = n(), words = mean(words)) %>%
-    mutate(fixation_per_word = fixation_count / words) %>%
-    select(-words, -fixation_count) %>%
+    left_join(filter(dt_mianji1, AOI1 == "all_aoi"), by = "pic") %>%
+    reframe(fixation_count = n(), mianji = mean(mianji, na.rm = TRUE)) %>%
+    mutate(fixation_per_mianji = fixation_count / mianji) %>%
+    select(-mianji, -fixation_count) %>%
     group_by(type) %>%
-    reframe(fixation_per_word = mean(fixation_per_word)) %>%
-    mutate(participants = dt_a$participants[[1]], AOI = "overall") %>%
-    left_join(dt_a_s)
-
-  rm(dt_a_s)
-
-  # 根据刺激类型和AOI对数据进行变形，合并，删除中间数据
-  dt_yes <- dt_a %>%
-    filter(stim %in% c("baseline", "target1", "target1_g")) %>%
-    pivot_longer(12:15, names_to = "AOI", values_to = "hit") %>%
-    filter(hit == 1) %>%
-    select(1:11, type, AOI)
-
-  dt_17 <- dt_a %>%
-    filter(stim %in% c("target2", "target2_g", "target3", "target3_g", "target4", "target4_g")) %>%
-    pivot_longer(cols = (12:13 | 18:24), names_to = "AOI", values_to = "hit") %>%
-    filter(hit == 1) %>%
-    select(1:11, type, AOI)
-
-  dt_fixation <- dt_a %>%
-    filter(stim %in% c("fixation", "fixation2", "fixation_g")) %>%
-    pivot_longer(16:17, names_to = "AOI", values_to = "hit") %>%
-    filter(hit == 1) %>%
-    select(1:11, type, AOI)
-
-  dt_aoi <- bind_rows(dt_yes, dt_17, dt_fixation)
-
-  rm(dt_yes, dt_17, dt_fixation)
-
-  # 对字数信息进行变形
-  dt_mianji2 <- dt_mianji %>%
-    select(-words) %>%
-    pivot_longer(cols = 2:3, names_to = "AOI", values_to = "words") %>%
-    mutate(AOI = str_replace_all(AOI, c("words_yuduan" = "yuduan", "words_question" = "question")))
+    reframe(fixation_per_mianji = mean(fixation_per_mianji, na.rm = TRUE)) %>%
+    mutate(participants = dt_a$participants[[1]], AOI1 = "overall") %>%
+    left_join(dt_a_s_a) %>%
+    drop_na(type)
 
   # 根据AOI计算fixation_duration和fixation_ps的平均值，每字平均注视次数，合并，删除中间数据
-  dt_aoi_s <- dt_aoi %>%
-    group_by(type, AOI) %>%
-    reframe(fixation_duration = mean(dur), fixation_ps = mean(aps)) %>%
-    mutate(participants = dt_a$participants[[1]])
-
-  dt_aoi_s2 <- dt_aoi %>%
-    group_by(type, pic, AOI) %>%
-    reframe(fixation_count = n()) %>%
-    left_join(dt_mianji2, by = c("pic", "AOI")) %>%
-    mutate(words = case_when(is.na(words) ~ 1, .default = words)) %>%
-    mutate(fixation_per_word = fixation_count / words) %>%
-    select(-words, -fixation_count) %>%
-    group_by(type, AOI) %>%
-    reframe(fixation_per_word = mean(fixation_per_word)) %>%
+  dt_aoi_s_a <- dt_a %>%
+    group_by(type, AOI1) %>%
+    reframe(
+      fixation_duration = mean(dur, na.rm = TRUE),
+      fixation_ps = mean(aps, na.rm = TRUE),
+      fixation_count = n(),
+      fixation_ps_cr_r = mean(ps_cr_r, na.rm = TRUE),
+      fixation_ps_cr_p = mean(ps_cr_p, na.rm = TRUE)
+    ) %>%
     mutate(participants = dt_a$participants[[1]]) %>%
-    left_join(dt_aoi_s)
+    drop_na(type, AOI1)
 
-  rm(dt_aoi_s)
+  dt_aoi_s2_a <- dt_a %>%
+    group_by(type, pic, AOI1) %>%
+    reframe(fixation_count = n()) %>%
+    left_join(filter(dt_mianji1, AOI1 != "all_aoi"), by = c("pic", "AOI1")) %>%
+    mutate(fixation_per_mianji = fixation_count / mianji) %>%
+    select(-mianji, -fixation_count) %>%
+    group_by(type, AOI1) %>%
+    reframe(fixation_per_mianji = mean(fixation_per_mianji, na.rm = TRUE)) %>%
+    mutate(participants = dt_a$participants[[1]]) %>%
+    left_join(dt_aoi_s_a) %>%
+    drop_na(type, AOI1)
 
-  dt_fixation_summary <- bind_rows(dt_a_s2, dt_aoi_s2)
+  dt_fixation_summary_a <- bind_rows(dt_a_s2_a, dt_aoi_s2_a) %>%
+    rename(AOI = AOI1) %>%
+    mutate(AOI_type = 1)
 
-  # 删除其余中间数据
-  rm(dt_mianji, dt_mianji2, dt_a, dt_aoi, loss_info, dt_a_s2, dt_aoi_s2)
+  # 根据维度计算fixation_duration和fixation_ps的平均值，每字平均注视次数，合并，删除中间数据
+  dt_a_s_b <- dt_a %>%
+    filter(!AOI2 %in% c("BG", NA)) %>%
+    group_by(type) %>%
+    reframe(
+      fixation_duration = mean(dur, na.rm = TRUE),
+      fixation_ps = mean(aps, na.rm = TRUE),
+      fixation_count = n(),
+      fixation_ps_cr_r = mean(ps_cr_r, na.rm = TRUE),
+      fixation_ps_cr_p = mean(ps_cr_p, na.rm = TRUE)
+    ) %>%
+    mutate(participants = dt_a$participants[[1]], AOI2 = "overall") %>%
+    drop_na(type)
+
+  dt_a_s2_b <- dt_a %>%
+    filter(!AOI2 %in% c("BG", NA)) %>%
+    group_by(type, pic) %>%
+    left_join(filter(dt_mianji2, AOI2 == "all_aoi"), by = "pic") %>%
+    reframe(fixation_count = n(), mianji = mean(mianji, na.rm = TRUE)) %>%
+    mutate(fixation_per_mianji = fixation_count / mianji) %>%
+    select(-mianji, -fixation_count) %>%
+    group_by(type) %>%
+    reframe(fixation_per_mianji = mean(fixation_per_mianji, na.rm = TRUE)) %>%
+    mutate(participants = dt_a$participants[[1]], AOI2 = "overall") %>%
+    left_join(dt_a_s_b) %>%
+    drop_na(type)
+
+  # 根据AOI计算fixation_duration和fixation_ps的平均值，每字平均注视次数，合并，删除中间数据
+  dt_aoi_s_b <- dt_a %>%
+    group_by(type, AOI2) %>%
+    reframe(
+      fixation_duration = mean(dur, na.rm = TRUE),
+      fixation_ps = mean(aps, na.rm = TRUE),
+      fixation_count = n(),
+      fixation_ps_cr_r = mean(ps_cr_r, na.rm = TRUE),
+      fixation_ps_cr_p = mean(ps_cr_p, na.rm = TRUE)
+    ) %>%
+    mutate(participants = dt_a$participants[[1]]) %>%
+    drop_na(type, AOI2)
+
+  dt_aoi_s2_b <- dt_a %>%
+    group_by(type, pic, AOI2) %>%
+    reframe(fixation_count = n()) %>%
+    left_join(filter(dt_mianji2, AOI2 != "all_aoi"), by = c("pic", "AOI2")) %>%
+    mutate(fixation_per_mianji = fixation_count / mianji) %>%
+    select(-mianji, -fixation_count) %>%
+    group_by(type, AOI2) %>%
+    reframe(fixation_per_mianji = mean(fixation_per_mianji, na.rm = TRUE)) %>%
+    mutate(participants = dt_a$participants[[1]]) %>%
+    left_join(dt_aoi_s_b) %>%
+    drop_na(type, AOI2)
+
+  dt_fixation_summary_b <- bind_rows(dt_a_s2_b, dt_aoi_s2_b) %>%
+    rename(AOI = AOI2) %>%
+    mutate(AOI_type = 2)
+
+  dt_fixation_summary <- bind_rows(dt_fixation_summary_a, dt_fixation_summary_b) %>%
+    select(participants, type, AOI_type, AOI, fixation_duration, fixation_ps, fixation_count, fixation_per_mianji, fixation_ps_cr_r, fixation_ps_cr_p)
 
   # 返回数据
   return(dt_fixation_summary)
 }
 
 # 定义方法，接收一个文件夹目录，一个loss文件路径，一个字数文件路径，对文件夹下的全部数据文件通过fixation_ss函数进行处理，返回一个合并的数据。
-fixation_ss_all <- function(path, loss_path, mianji_path) {
+fixation_ss_all <- function(path, loss_path, mianji_path1, mianji_path2) {
   # 读取文件夹下的全部数据文件
   dt_path <- list.files(path, full.names = TRUE)
 
+  # 读取loss数据，字数数据，fixation数据
+  loss_info <- fread(loss_path)
+
+  dt_mianji1 <- read_csv(mianji_path1)
+  dt_mianji2 <- read_csv(mianji_path2)
+
   # 对全部数据文件进行处理
   dt_fixation_summary <- dt_path %>%
-    future_map_dfr(fixation_ss, loss_path = loss_path, mianji_path = mianji_path)
+    future_map_dfr(fixation_ss, loss_info = loss_info, dt_mianji1 = dt_mianji1, dt_mianji2 = dt_mianji2)
 
   # 返回数据
   return(dt_fixation_summary)
@@ -123,9 +170,10 @@ fixation_ss_all <- function(path, loss_path, mianji_path) {
 批量进行处理
 ```{r, echo=FALSE, message=FALSE}
 # 定义文件夹路径，loss文件路径，字数文件路径
-path <- "../yajuan_data/out/fix2_AOI_type"
+path <- "../yajuan_data/out/fix2_AOI"
 loss_path <- "../yajuan_data/out/loss_rate_all/pic_list.csv"
-mianji_path <- "info/count1.xlsx"
+mianji_path1 <- "info/mianji_1.csv"
+mianji_path2 <- "info/mianji_2.csv"
 
 # 新建一个文件夹，用于存放处理后的数据
 dir.create("../yajuan_data/statics")
@@ -135,9 +183,8 @@ dir.create("../yajuan_data/statics/fixation")
 save_path <- "../yajuan_data/statics/fixation/fixation_01.csv"
 
 # 对文件夹下的全部数据文件进行处理
-dt_fixation_summary <- fixation_ss_all(path, loss_path, mianji_path) %>%
-  arrange(participants, type, AOI) %>%
-  select(participants, type, AOI, fixation_duration, fixation_ps, fixation_per_word)
+dt_fixation_summary <- fixation_ss_all(path, loss_path, mianji_path1, mianji_path2) %>%
+  arrange(participants, type, AOI_type, AOI)
 
 # 保存处理结果
 fwrite(dt_fixation_summary, save_path, na = "NA")
